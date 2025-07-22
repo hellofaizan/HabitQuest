@@ -46,20 +46,35 @@ class MainActivity : ComponentActivity() {
                     hasSeenOnboarding = repo.hasSeenOnboarding()
                 }
 
-                if (hasSeenOnboarding == null) {
-                    // Loading state (optional)
-                    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                        Text(
-                            text = "Loading...",
-                            modifier = Modifier.padding(innerPadding)
+                when (hasSeenOnboarding) {
+                    null -> {
+                        // Loading state (optional)
+                        Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                            Text(
+                                text = "Loading...",
+                                modifier = Modifier.padding(innerPadding)
+                            )
+                        }
+                    }
+
+                    false -> {
+                        OnboardingScreen(
+                            onContinue = {
+                                scope.launch {
+                                    repo.setOnboardingSeen()
+                                    hasSeenOnboarding = true
+                                }
+                            }
                         )
                     }
-                } else {
-                    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                        Greeting(
-                            name = "Android",
-                            modifier = Modifier.padding(innerPadding)
-                        )
+
+                    else -> {
+                        Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                            Greeting(
+                                name = "Android",
+                                modifier = Modifier.padding(innerPadding)
+                            )
+                        }
                     }
                 }
             }
