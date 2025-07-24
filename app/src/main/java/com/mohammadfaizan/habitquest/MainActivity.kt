@@ -30,50 +30,53 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             HabitQuestTheme {
-                val context = this
-                val db = remember {
-                    Room.databaseBuilder(
-                        context,
-                        AppDatabase::class.java,
-                        "app-db"
-                    ).build()
-                }
-                val repo = remember { PreferencesRepositoryImpl(db.appPreferencesDao()) }
-                var hasSeenOnboarding by remember { mutableStateOf<Boolean?>(null) }
-                val scope = rememberCoroutineScope()
+                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                    val context = this
+                    val db = remember {
+                        Room.databaseBuilder(
+                            context,
+                            AppDatabase::class.java,
+                            "app-db"
+                        ).build()
+                    }
+                    val repo = remember { PreferencesRepositoryImpl(db.appPreferencesDao()) }
+                    var hasSeenOnboarding by remember { mutableStateOf<Boolean?>(null) }
+                    val scope = rememberCoroutineScope()
 
-                LaunchedEffect(Unit) {
-                    hasSeenOnboarding = repo.hasSeenOnboarding()
-                }
+                    LaunchedEffect(Unit) {
+                        hasSeenOnboarding = repo.hasSeenOnboarding()
+                    }
 
-                when (hasSeenOnboarding) {
-                    null -> {
-                        // Loading state (optional)
-                        Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                            Text(
-                                text = "Loading...",
+                    when (hasSeenOnboarding) {
+                        null -> {
+                            // Loading state (optional)
+                            Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                                Text(
+                                    text = "Loading...",
+                                    modifier = Modifier.padding(innerPadding)
+                                )
+                            }
+                        }
+
+                        false -> {
+                            OnboardingScreen(
+                                onContinue = {
+                                    scope.launch {
+                                        repo.setOnboardingSeen()
+                                        hasSeenOnboarding = true
+                                    }
+                                },
                                 modifier = Modifier.padding(innerPadding)
                             )
                         }
-                    }
 
-                    false -> {
-                        OnboardingScreen(
-                            onContinue = {
-                                scope.launch {
-                                    repo.setOnboardingSeen()
-                                    hasSeenOnboarding = true
-                                }
+                        else -> {
+                            Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                                Greeting(
+                                    name = "Android",
+                                    modifier = Modifier.padding(innerPadding)
+                                )
                             }
-                        )
-                    }
-
-                    else -> {
-                        Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                            Greeting(
-                                name = "Android",
-                                modifier = Modifier.padding(innerPadding)
-                            )
                         }
                     }
                 }
