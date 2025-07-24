@@ -75,8 +75,4 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.svg)
 
-    // Compose Navigation
-    implementation(libs.androidx.navigation.compose)
-    implementation(libs.accompanist.navigation.animation)
-
 }

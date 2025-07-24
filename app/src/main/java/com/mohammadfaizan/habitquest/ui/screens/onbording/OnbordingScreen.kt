@@ -1,4 +1,4 @@
-package com.mohammadfaizan.habitquest.ui.onbording
+package com.mohammadfaizan.habitquest.ui.screens.onbording
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image

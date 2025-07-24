@@ -1,4 +1,4 @@
-package com.mohammadfaizan.habitquest.ui.onbording
+package com.mohammadfaizan.habitquest.ui.screens.onbording
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
