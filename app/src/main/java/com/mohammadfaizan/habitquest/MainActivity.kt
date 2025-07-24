@@ -20,6 +20,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.room.Room
 import com.mohammadfaizan.habitquest.data.local.AppDatabase
 import com.mohammadfaizan.habitquest.domain.repository.PreferencesRepositoryImpl
+import com.mohammadfaizan.habitquest.ui.navigation.MainScreen
 import com.mohammadfaizan.habitquest.ui.onbording.OnboardingScreen
 import com.mohammadfaizan.habitquest.ui.theme.HabitQuestTheme
 import kotlinx.coroutines.launch
@@ -71,12 +72,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                         else -> {
-                            Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                                Greeting(
-                                    name = "Android",
-                                    modifier = Modifier.padding(innerPadding)
-                                )
-                            }
+                            MainScreen()
                         }
                     }
                 }
