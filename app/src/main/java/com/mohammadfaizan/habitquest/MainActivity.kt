@@ -24,11 +24,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.room.Room
 import com.mohammadfaizan.habitquest.data.local.AppDatabase
+import com.mohammadfaizan.habitquest.data.repository.HabitRepositoryImpl
+import com.mohammadfaizan.habitquest.data.repository.HabitManagementRepositoryImpl
+import com.mohammadfaizan.habitquest.data.repository.HabitCompletionRepositoryImpl
 import com.mohammadfaizan.habitquest.domain.repository.PreferencesRepositoryImpl
+import com.mohammadfaizan.habitquest.domain.usecase.AddHabitUseCase
+import com.mohammadfaizan.habitquest.domain.usecase.GetHabitsUseCase
+import com.mohammadfaizan.habitquest.domain.usecase.CompleteHabitUseCase
+import com.mohammadfaizan.habitquest.domain.usecase.DeleteHabitUseCase
+import com.mohammadfaizan.habitquest.domain.usecase.GetHabitsWithCompletionStatusUseCase
 import com.mohammadfaizan.habitquest.ui.components.TopAppBarComponent
 import com.mohammadfaizan.habitquest.ui.screens.AddHabitScreen
+import com.mohammadfaizan.habitquest.ui.screens.HomeScreen
 import com.mohammadfaizan.habitquest.ui.screens.onbording.OnboardingScreen
 import com.mohammadfaizan.habitquest.ui.theme.HabitQuestTheme
+import com.mohammadfaizan.habitquest.ui.viewmodel.AddHabitViewModel
+import com.mohammadfaizan.habitquest.ui.viewmodel.HabitViewModel
+import com.mohammadfaizan.habitquest.ui.viewmodel.AddHabitActionType
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -46,13 +58,24 @@ class MainActivity : ComponentActivity() {
                             "app-db"
                         ).build()
                     }
-                    val repo = remember { PreferencesRepositoryImpl(db.appPreferencesDao()) }
+                    
+                    // Initialize repositories and use cases
+                    val preferencesRepo = remember { PreferencesRepositoryImpl(db.appPreferencesDao()) }
+                    val habitRepo = remember { HabitRepositoryImpl(db.habitDao()) }
+                    val habitCompletionRepo = remember { HabitCompletionRepositoryImpl(db.habitCompletionDao()) }
+                    val habitManagementRepo = remember { HabitManagementRepositoryImpl(habitRepo, habitCompletionRepo) }
+                    val addHabitUseCase = remember { AddHabitUseCase(habitRepo) }
+                    
+                    // Initialize ViewModels
+                    val addHabitViewModel = remember { AddHabitViewModel(addHabitUseCase) }
+                    val habitViewModel = remember { HabitViewModel(addHabitUseCase, GetHabitsUseCase(habitRepo, habitManagementRepo), CompleteHabitUseCase(habitManagementRepo), DeleteHabitUseCase(habitManagementRepo), GetHabitsWithCompletionStatusUseCase(habitManagementRepo)) }
+                    
                     var hasSeenOnboarding by remember { mutableStateOf<Boolean?>(null) }
                     var showAddHabitScreen by remember { mutableStateOf(false) }
                     val scope = rememberCoroutineScope()
 
                     LaunchedEffect(Unit) {
-                        hasSeenOnboarding = repo.hasSeenOnboarding()
+                        hasSeenOnboarding = preferencesRepo.hasSeenOnboarding()
                     }
 
                     when (hasSeenOnboarding) {
@@ -70,7 +93,7 @@ class MainActivity : ComponentActivity() {
                             OnboardingScreen(
                                 onContinue = {
                                     scope.launch {
-                                        repo.setOnboardingSeen()
+                                        preferencesRepo.setOnboardingSeen()
                                         hasSeenOnboarding = true
                                     }
                                 },
@@ -80,7 +103,67 @@ class MainActivity : ComponentActivity() {
 
                         else -> {
                             if (showAddHabitScreen) {
-                                AddHabitScreen(onBack = { showAddHabitScreen = false }, modifier = Modifier.padding(innerPadding))
+                                AddHabitScreen(
+                                    onBack = { 
+                                        showAddHabitScreen = false
+                                        addHabitViewModel.resetForm()
+                                    },
+                                    onCreateHabit = { name, description, color, category, frequency, targetCount, reminderEnabled, reminderTime ->
+                                        // Create the habit using ViewModel
+                                        scope.launch {
+                                            addHabitViewModel.createHabit()
+                                        }
+                                    },
+                                    modifier = Modifier.padding(innerPadding),
+                                    viewModel = addHabitViewModel
+                                )
+                                
+                                // Handle ViewModel actions
+                                LaunchedEffect(addHabitViewModel.actions) {
+                                    addHabitViewModel.actions.collect { action ->
+                                        action?.let {
+                                            when (it.type) {
+                                                AddHabitActionType.HABIT_CREATED -> {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Habit created successfully!",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                    showAddHabitScreen = false
+                                                    addHabitViewModel.resetForm()
+                                                }
+                                                AddHabitActionType.VALIDATION_ERROR -> {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Validation error: ${it.data}",
+                                                        Toast.LENGTH_LONG
+                                                    ).show()
+                                                }
+                                                AddHabitActionType.NETWORK_ERROR -> {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Error creating habit: ${it.data}",
+                                                        Toast.LENGTH_LONG
+                                                    ).show()
+                                                }
+                                            }
+                                            addHabitViewModel.clearActions()
+                                        }
+                                    }
+                                }
+                                
+                                // Handle form errors
+                                LaunchedEffect(addHabitViewModel.formState) {
+                                    addHabitViewModel.formState.collect { formState ->
+                                        formState.error?.let { error ->
+                                            Toast.makeText(
+                                                context,
+                                                error,
+                                                Toast.LENGTH_LONG
+                                            ).show()
+                                        }
+                                    }
+                                }
                             } else {
                                 Scaffold(
                                     topBar = {
@@ -120,8 +203,19 @@ class MainActivity : ComponentActivity() {
                                     },
                                     modifier = Modifier.fillMaxSize()
                                 ) { innerPadding ->
-                                    Text(
-                                        text = "Loading...",
+                                    HomeScreen(
+                                        habitViewModel = habitViewModel,
+                                        onAddHabitClick = {
+                                            showAddHabitScreen = true
+                                        },
+                                        onHabitClick = { habit ->
+                                            // Handle habit click - could open detail screen
+                                            Toast.makeText(
+                                                context,
+                                                "Clicked on: ${habit.name}",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        },
                                         modifier = Modifier.padding(innerPadding)
                                     )
                                 }
