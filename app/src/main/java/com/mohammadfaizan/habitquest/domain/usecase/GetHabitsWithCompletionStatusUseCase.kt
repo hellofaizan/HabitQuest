@@ -2,10 +2,11 @@ package com.mohammadfaizan.habitquest.domain.usecase
 
 import com.mohammadfaizan.habitquest.domain.repository.HabitManagementRepository
 import com.mohammadfaizan.habitquest.domain.repository.HabitWithCompletionStatus
+import com.mohammadfaizan.habitquest.utils.DateUtils
 import javax.inject.Inject
 
 data class GetHabitsWithCompletionStatusRequest(
-    val dateKey: String? = null // If null, uses current date
+    val dateKey: String? = null
 )
 
 data class GetHabitsWithCompletionStatusResult(
@@ -29,20 +30,16 @@ class GetHabitsWithCompletionStatusUseCase @Inject constructor(
             GetHabitsWithCompletionStatusResult(success = false, error = "Failed to get habits with completion status: ${e.message}")
         }
     }
-    
-    // Convenience method for getting habits for today
+
     suspend fun getHabitsForToday(): GetHabitsWithCompletionStatusResult {
         return invoke(GetHabitsWithCompletionStatusRequest())
     }
-    
-    // Convenience method for getting habits for specific date
+
     suspend fun getHabitsForDate(dateKey: String): GetHabitsWithCompletionStatusResult {
         return invoke(GetHabitsWithCompletionStatusRequest(dateKey = dateKey))
     }
-    
-    // Helper method to get current date key
+
     private fun getCurrentDateKey(): String {
-        val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
-        return dateFormat.format(java.util.Date())
+        return DateUtils.getCurrentDateKey()
     }
-} 
+}

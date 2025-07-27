@@ -7,6 +7,7 @@ import com.mohammadfaizan.habitquest.domain.repository.HabitRepository
 import com.mohammadfaizan.habitquest.domain.repository.HabitCompletionRepository
 import com.mohammadfaizan.habitquest.domain.repository.*
 import kotlinx.coroutines.flow.first
+import com.mohammadfaizan.habitquest.utils.DateUtils
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -14,16 +15,20 @@ class HabitManagementRepositoryImpl(
     private val habitRepository: HabitRepository,
     private val habitCompletionRepository: HabitCompletionRepository
 ) : HabitManagementRepository {
-    
+
     override suspend fun completeHabit(habitId: Long, notes: String?): Boolean {
         return try {
             val habit = habitRepository.getHabitById(habitId) ?: return false
-            val dateKey = getCurrentDateKey()
+            val dateKey = DateUtils.getCurrentDateKey()
+
+            // Get current completion count for today
+            val todayCompletions = habitCompletionRepository.getCompletionsForSpecificDate(habitId, dateKey)
             
-            // Check if already completed for today
-            val isCompleted = habitCompletionRepository.isHabitCompletedForDate(habitId, dateKey)
-            if (isCompleted > 0) return true // Already completed
-            
+            // Check if we've reached the target count for today
+            if (todayCompletions >= habit.targetCount) {
+                return true // Already reached target for today
+            }
+
             // Create completion
             val completion = HabitCompletion(
                 habitId = habitId,
@@ -31,19 +36,19 @@ class HabitManagementRepositoryImpl(
                 dateKey = dateKey
             )
             habitCompletionRepository.insertCompletion(completion)
-            
+
             // Update habit statistics
             habitRepository.incrementCompletions(habitId)
-            
+
             // Calculate and update streak
             calculateAndUpdateStreak(habitId)
-            
+
             true
         } catch (e: Exception) {
             false
         }
     }
-    
+
     override suspend fun uncompleteHabit(habitId: Long, dateKey: String): Boolean {
         return try {
             val completion = habitCompletionRepository.getCompletionForDate(habitId, dateKey)
@@ -56,45 +61,49 @@ class HabitManagementRepositoryImpl(
             false
         }
     }
-    
+
     override suspend fun getHabitWithCompletions(habitId: Long): HabitWithCompletions? {
         val habit = habitRepository.getHabitById(habitId) ?: return null
         val completions = habitCompletionRepository.getCompletionsForHabit(habitId).first()
         return HabitWithCompletions(habit, completions)
     }
-    
+
     override suspend fun getHabitsWithCompletionStatus(dateKey: String): List<HabitWithCompletionStatus> {
         val habits = habitRepository.getActiveHabits().first()
         return habits.map { habit ->
-            val isCompleted = habitCompletionRepository.isHabitCompletedForDate(habit.id, dateKey) > 0
-            val completionCount = habitCompletionRepository.getCompletionsForSpecificDate(habit.id, dateKey)
+            val isCompleted =
+                habitCompletionRepository.isHabitCompletedForDate(habit.id, dateKey) > 0
+            val completionCount =
+                habitCompletionRepository.getCompletionsForSpecificDate(habit.id, dateKey)
             HabitWithCompletionStatus(habit, isCompleted, completionCount)
         }
     }
-    
+
     override suspend fun calculateAndUpdateStreak(habitId: Long): Int {
         val currentStreak = habitCompletionRepository.getCurrentStreak(habitId)
         habitRepository.updateStreak(habitId, currentStreak)
         return currentStreak
     }
-    
+
     override suspend fun getHabitStats(habitId: Long): HabitStats {
-        val habit = habitRepository.getHabitById(habitId) ?: throw IllegalArgumentException("Habit not found")
+        val habit = habitRepository.getHabitById(habitId)
+            ?: throw IllegalArgumentException("Habit not found")
         val totalCompletions = habitCompletionRepository.getTotalCompletionsForHabit(habitId)
         val currentStreak = habit.currentStreak
         val longestStreak = habit.longestStreak
-        
+
         // Calculate completion rate (last 30 days)
-        val thirtyDaysAgo = getDateKeyForDaysAgo(30)
-        val recentCompletions = habitCompletionRepository.getCompletionsSinceDate(habitId, thirtyDaysAgo)
+        val thirtyDaysAgo = DateUtils.getDateKeyForDaysAgo(30)
+        val recentCompletions =
+            habitCompletionRepository.getCompletionsSinceDate(habitId, thirtyDaysAgo)
         val completionRate = if (recentCompletions > 0) (recentCompletions / 30.0f) * 100 else 0f
-        
+
         // Calculate average completions per day
         val averageCompletionsPerDay = if (totalCompletions > 0) {
             val daysSinceCreation = getDaysSinceCreation(habit.createdAt)
             if (daysSinceCreation > 0) totalCompletions.toFloat() / daysSinceCreation else 0f
         } else 0f
-        
+
         return HabitStats(
             totalCompletions = totalCompletions,
             currentStreak = currentStreak,
@@ -103,7 +112,7 @@ class HabitManagementRepositoryImpl(
             averageCompletionsPerDay = averageCompletionsPerDay
         )
     }
-    
+
     override suspend fun completeHabitsForDate(habitIds: List<Long>, dateKey: String): Int {
         var completedCount = 0
         for (habitId in habitIds) {
@@ -120,7 +129,7 @@ class HabitManagementRepositoryImpl(
         }
         return completedCount
     }
-    
+
     override suspend fun deleteHabitAndCompletions(habitId: Long): Boolean {
         return try {
             habitCompletionRepository.deleteAllCompletionsForHabit(habitId)
@@ -130,15 +139,16 @@ class HabitManagementRepositoryImpl(
             false
         }
     }
-    
+
     override suspend fun getWeeklyProgress(habitId: Long, weekStart: String): WeeklyProgress {
         val weekEnd = getWeekEnd(weekStart)
-        val completions = habitCompletionRepository.getCompletionsInDateRange(habitId, weekStart, weekEnd).first()
+        val completions =
+            habitCompletionRepository.getCompletionsInDateRange(habitId, weekStart, weekEnd).first()
         val daysCompleted = completions.size
         val totalDays = 7
         val completionRate = (daysCompleted.toFloat() / totalDays) * 100
         val streak = habitCompletionRepository.getCurrentStreak(habitId)
-        
+
         return WeeklyProgress(
             habitId = habitId,
             weekStart = weekStart,
@@ -148,16 +158,19 @@ class HabitManagementRepositoryImpl(
             streak = streak
         )
     }
-    
+
     override suspend fun getMonthlyProgress(habitId: Long, month: String): MonthlyProgress {
         val monthStart = "$month-01"
         val monthEnd = getMonthEnd(month)
-        val completions = habitCompletionRepository.getCompletionsInDateRange(habitId, monthStart, monthEnd).first()
+        val completions =
+            habitCompletionRepository.getCompletionsInDateRange(habitId, monthStart, monthEnd)
+                .first()
         val daysCompleted = completions.size
         val totalDays = getDaysInMonth(month)
         val completionRate = (daysCompleted.toFloat() / totalDays) * 100
-        val averageCompletionsPerDay = if (totalDays > 0) daysCompleted.toFloat() / totalDays else 0f
-        
+        val averageCompletionsPerDay =
+            if (totalDays > 0) daysCompleted.toFloat() / totalDays else 0f
+
         return MonthlyProgress(
             habitId = habitId,
             month = month,
@@ -170,15 +183,11 @@ class HabitManagementRepositoryImpl(
     
     // Helper methods
     private fun getCurrentDateKey(): String {
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        return dateFormat.format(Date())
+        return DateUtils.getCurrentDateKey()
     }
     
     private fun getDateKeyForDaysAgo(days: Int): String {
-        val calendar = Calendar.getInstance()
-        calendar.add(Calendar.DAY_OF_YEAR, -days)
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        return dateFormat.format(calendar.time)
+        return DateUtils.getDateKeyForDaysAgo(days)
     }
     
     private fun getDaysSinceCreation(createdAt: Date): Int {
@@ -194,7 +203,7 @@ class HabitManagementRepositoryImpl(
         calendar.add(Calendar.DAY_OF_YEAR, 6)
         return dateFormat.format(calendar.time)
     }
-    
+
     private fun getMonthEnd(month: String): String {
         val calendar = Calendar.getInstance()
         val dateFormat = SimpleDateFormat("yyyy-MM", Locale.getDefault())
@@ -204,11 +213,11 @@ class HabitManagementRepositoryImpl(
         val endDateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         return endDateFormat.format(calendar.time)
     }
-    
+
     private fun getDaysInMonth(month: String): Int {
         val calendar = Calendar.getInstance()
         val dateFormat = SimpleDateFormat("yyyy-MM", Locale.getDefault())
         calendar.time = dateFormat.parse(month) ?: Date()
         return calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
     }
-} 
+}

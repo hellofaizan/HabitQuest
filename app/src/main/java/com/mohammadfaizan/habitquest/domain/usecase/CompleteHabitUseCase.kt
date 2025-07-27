@@ -1,18 +1,21 @@
 package com.mohammadfaizan.habitquest.domain.usecase
 
 import com.mohammadfaizan.habitquest.domain.repository.HabitManagementRepository
+import com.mohammadfaizan.habitquest.utils.DateUtils
 import javax.inject.Inject
 
 data class CompleteHabitRequest(
     val habitId: Long,
     val notes: String? = null,
-    val dateKey: String? = null // If null, uses current date
+    val dateKey: String? = null
 )
 
 data class CompleteHabitResult(
     val success: Boolean,
     val wasAlreadyCompleted: Boolean = false,
     val newStreak: Int = 0,
+    val currentCompletions: Int = 0,
+    val targetCount: Int = 0,
     val error: String? = null
 )
 
@@ -22,7 +25,6 @@ class CompleteHabitUseCase @Inject constructor(
     
     suspend operator fun invoke(request: CompleteHabitRequest): CompleteHabitResult {
         return try {
-            // Check if habit exists and is active
             val habit = habitManagementRepository.getHabitWithCompletions(request.habitId)
             if (habit == null) {
                 return CompleteHabitResult(success = false, error = "Habit not found")
@@ -31,36 +33,36 @@ class CompleteHabitUseCase @Inject constructor(
             if (!habit.habit.isActive) {
                 return CompleteHabitResult(success = false, error = "Cannot complete inactive habit")
             }
-            
-            // Complete the habit (repository handles duplicate checking)
+
             val completionSuccess = habitManagementRepository.completeHabit(request.habitId, request.notes)
             
             if (!completionSuccess) {
                 return CompleteHabitResult(success = false, error = "Failed to complete habit")
             }
-            
-            // Get updated streak
+
             val newStreak = habitManagementRepository.calculateAndUpdateStreak(request.habitId)
+
+            val todayCompletions = habitManagementRepository.getHabitsWithCompletionStatus(DateUtils.getCurrentDateKey())
+                .find { it.habit.id == request.habitId }?.completionCount ?: 0
             
             CompleteHabitResult(
                 success = true,
                 wasAlreadyCompleted = false,
-                newStreak = newStreak
+                newStreak = newStreak,
+                currentCompletions = todayCompletions,
+                targetCount = habit.habit.targetCount
             )
             
         } catch (e: Exception) {
             CompleteHabitResult(success = false, error = "Failed to complete habit: ${e.message}")
         }
     }
-    
-    // Convenience method for completing habit for today
+
     suspend fun completeHabitForToday(habitId: Long, notes: String? = null): CompleteHabitResult {
         return invoke(CompleteHabitRequest(habitId = habitId, notes = notes))
     }
-    
-    // Helper method to get current date key
+
     private fun getCurrentDateKey(): String {
-        val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
-        return dateFormat.format(java.util.Date())
+        return DateUtils.getCurrentDateKey()
     }
-} 
+}

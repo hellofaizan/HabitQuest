@@ -1,25 +1,31 @@
 package com.mohammadfaizan.habitquest.ui.screens
 
-import androidx.compose.foundation.layout.*
+import android.widget.Toast
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.mohammadfaizan.habitquest.data.local.Habit
 import com.mohammadfaizan.habitquest.data.local.HabitCompletion
-import com.mohammadfaizan.habitquest.ui.components.HabitCard
-import com.mohammadfaizan.habitquest.ui.components.HabitList
-import com.mohammadfaizan.habitquest.ui.components.EmptyHabitState
-import com.mohammadfaizan.habitquest.ui.viewmodel.HabitViewModel
-import com.mohammadfaizan.habitquest.ui.viewmodel.HabitActionType
 import com.mohammadfaizan.habitquest.domain.repository.HabitWithCompletionStatus
-import androidx.compose.runtime.collectAsState
+import com.mohammadfaizan.habitquest.ui.components.EmptyHabitState
+import com.mohammadfaizan.habitquest.ui.components.HabitCard
+import com.mohammadfaizan.habitquest.ui.viewmodel.HabitActionType
+import com.mohammadfaizan.habitquest.ui.viewmodel.HabitViewModel
 
 @Composable
 fun HomeScreen(
@@ -30,6 +36,7 @@ fun HomeScreen(
 ) {
     val uiState by habitViewModel.uiState.collectAsState()
     val actions by habitViewModel.actions.collectAsState()
+    val context = LocalContext.current
     
     // Handle ViewModel actions
     LaunchedEffect(actions) {
@@ -43,6 +50,7 @@ fun HomeScreen(
                 HabitActionType.COMPLETE_HABIT -> {
                     // Habit was completed, refresh the list
                     habitViewModel.loadHabitsWithCompletionStatus()
+                    Toast.makeText(context, "Habit completed!", Toast.LENGTH_SHORT).show()
                 }
                 HabitActionType.DELETE_HABIT -> {
                     // Habit was deleted, refresh the list
@@ -86,6 +94,7 @@ fun HomeScreen(
                 HabitListContent(
                     habits = uiState.habits,
                     habitsWithCompletionStatus = uiState.habitsWithCompletionStatus,
+                    habitCompletions = uiState.habitCompletions,
                     onHabitClick = onHabitClick,
                     onCompleteClick = { habit ->
                         habitViewModel.completeHabit(habit.id)
@@ -101,15 +110,13 @@ fun HomeScreen(
 private fun HabitListContent(
     habits: List<Habit>,
     habitsWithCompletionStatus: List<HabitWithCompletionStatus>,
+    habitCompletions: Map<Long, List<HabitCompletion>>,
     onHabitClick: (Habit) -> Unit,
     onCompleteClick: (Habit) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Convert habitsWithCompletionStatus to a map for easy lookup
-    val completionsMap = remember(habitsWithCompletionStatus) {
-        habitsWithCompletionStatus.associate { habitWithStatus ->
-            habitWithStatus.habit.id to emptyList<HabitCompletion>() // We'll need to fetch actual completions
-        }
+    val completionsMap = remember(habitsWithCompletionStatus, habitCompletions) {
+        habitCompletions
     }
     
     LazyColumn(
@@ -124,44 +131,6 @@ private fun HabitListContent(
                 onHabitClick = { onHabitClick(habit) },
                 onCompleteClick = { onCompleteClick(habit) },
                 modifier = Modifier.fillMaxWidth()
-            )
-        }
-    }
-}
-
-@Composable
-fun HomeScreenPreview() {
-    // Preview for development
-    val mockHabits = listOf(
-        Habit(
-            id = 1,
-            name = "Morning Exercise",
-            description = "30 minutes of cardio",
-            color = "#FF0000",
-            category = "Health",
-            targetCount = 1
-        ),
-        Habit(
-            id = 2,
-            name = "Read Books",
-            description = "Read 20 pages daily",
-            color = "#00FF00",
-            category = "Learning",
-            targetCount = 3
-        )
-    )
-    
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(16.dp)
-    ) {
-        items(mockHabits) { habit ->
-            HabitCard(
-                habit = habit,
-                completions = emptyList(),
-                onHabitClick = {},
-                onCompleteClick = {}
             )
         }
     }

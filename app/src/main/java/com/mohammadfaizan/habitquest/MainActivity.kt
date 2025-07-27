@@ -65,10 +65,9 @@ class MainActivity : ComponentActivity() {
                     val habitCompletionRepo = remember { HabitCompletionRepositoryImpl(db.habitCompletionDao()) }
                     val habitManagementRepo = remember { HabitManagementRepositoryImpl(habitRepo, habitCompletionRepo) }
                     val addHabitUseCase = remember { AddHabitUseCase(habitRepo) }
-                    
-                    // Initialize ViewModels
+
                     val addHabitViewModel = remember { AddHabitViewModel(addHabitUseCase) }
-                    val habitViewModel = remember { HabitViewModel(addHabitUseCase, GetHabitsUseCase(habitRepo, habitManagementRepo), CompleteHabitUseCase(habitManagementRepo), DeleteHabitUseCase(habitManagementRepo), GetHabitsWithCompletionStatusUseCase(habitManagementRepo)) }
+                    val habitViewModel = remember { HabitViewModel(addHabitUseCase, GetHabitsUseCase(habitRepo, habitManagementRepo), CompleteHabitUseCase(habitManagementRepo), DeleteHabitUseCase(habitManagementRepo), GetHabitsWithCompletionStatusUseCase(habitManagementRepo), habitCompletionRepo) }
                     
                     var hasSeenOnboarding by remember { mutableStateOf<Boolean?>(null) }
                     var showAddHabitScreen by remember { mutableStateOf(false) }
@@ -151,8 +150,7 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 }
-                                
-                                // Handle form errors
+
                                 LaunchedEffect(addHabitViewModel.formState) {
                                     addHabitViewModel.formState.collect { formState ->
                                         formState.error?.let { error ->
@@ -225,21 +223,5 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    HabitQuestTheme {
-        Greeting("Android")
     }
 }

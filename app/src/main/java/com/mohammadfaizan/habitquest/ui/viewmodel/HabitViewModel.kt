@@ -3,11 +3,13 @@ package com.mohammadfaizan.habitquest.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mohammadfaizan.habitquest.data.local.Habit
+import com.mohammadfaizan.habitquest.data.local.HabitCompletion
 import com.mohammadfaizan.habitquest.domain.repository.HabitWithCompletionStatus
 import com.mohammadfaizan.habitquest.domain.usecase.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -15,6 +17,7 @@ data class HabitUiState(
     val isLoading: Boolean = false,
     val habits: List<Habit> = emptyList(),
     val habitsWithCompletionStatus: List<HabitWithCompletionStatus> = emptyList(),
+    val habitCompletions: Map<Long, List<com.mohammadfaizan.habitquest.data.local.HabitCompletion>> = emptyMap(),
     val error: String? = null,
     val selectedHabit: Habit? = null,
     val isRefreshing: Boolean = false
@@ -40,7 +43,8 @@ class HabitViewModel @Inject constructor(
     private val getHabitsUseCase: GetHabitsUseCase,
     private val completeHabitUseCase: CompleteHabitUseCase,
     private val deleteHabitUseCase: DeleteHabitUseCase,
-    private val getHabitsWithCompletionStatusUseCase: GetHabitsWithCompletionStatusUseCase
+    private val getHabitsWithCompletionStatusUseCase: GetHabitsWithCompletionStatusUseCase,
+    private val habitCompletionRepository: com.mohammadfaizan.habitquest.domain.repository.HabitCompletionRepository
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(HabitUiState())
@@ -95,6 +99,8 @@ class HabitViewModel @Inject constructor(
                         habitsWithCompletionStatus = result.habits,
                         isLoading = false
                     )
+                    // Load completion data for the contribution graph
+                    loadHabitCompletions()
                 } else {
                     _uiState.value = _uiState.value.copy(
                         error = result.error,
@@ -154,12 +160,16 @@ class HabitViewModel @Inject constructor(
     fun completeHabit(habitId: Long, notes: String? = null) {
         viewModelScope.launch {
             try {
+                println("Completing habit with ID: $habitId")
                 val request = CompleteHabitRequest(habitId = habitId, notes = notes)
                 val result = completeHabitUseCase(request)
                 
                 if (result.success) {
+                    println("Habit completion successful: ${result.currentCompletions}/${result.targetCount}, reloading data...")
                     // Reload habits with completion status
                     loadHabitsWithCompletionStatus()
+                    // Also reload completion data for the contribution graph
+                    loadHabitCompletions()
                     _actions.value = HabitAction(HabitActionType.COMPLETE_HABIT, result.newStreak)
                 } else {
                     _uiState.value = _uiState.value.copy(error = result.error)
@@ -270,5 +280,27 @@ class HabitViewModel @Inject constructor(
     
     fun clearActions() {
         _actions.value = null
+    }
+    
+    fun loadHabitCompletions() {
+        viewModelScope.launch {
+            try {
+                val habits = _uiState.value.habits
+                val completionsMap = mutableMapOf<Long, List<HabitCompletion>>()
+                
+                println("Loading completions for ${habits.size} habits...")
+
+                habits.forEach { habit ->
+                    val completions = habitCompletionRepository.getCompletionsForHabit(habit.id).first()
+                    completionsMap[habit.id] = completions
+                    println("Habit ${habit.name}: ${completions.size} completions")
+                }
+                
+                _uiState.value = _uiState.value.copy(habitCompletions = completionsMap)
+                println("Updated habitCompletions map with ${completionsMap.size} entries")
+            } catch (e: Exception) {
+                println("Error loading habit completions: ${e.message}")
+            }
+        }
     }
 }
