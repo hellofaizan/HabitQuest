@@ -75,7 +75,6 @@ fun HomeScreen(
     Column(
         modifier = modifier.fillMaxSize()
     ) {
-        // Content
         when {
             uiState.isLoading -> {
                 Box(
@@ -124,8 +123,8 @@ private fun HabitListContent(
 
     LazyColumn(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+        verticalArrangement = Arrangement.spacedBy(15.dp),
+        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
     ) {
         items(habits) { habit ->
             HabitCard(

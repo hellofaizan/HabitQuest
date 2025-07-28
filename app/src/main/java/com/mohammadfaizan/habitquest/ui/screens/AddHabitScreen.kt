@@ -1,7 +1,6 @@
 package com.mohammadfaizan.habitquest.ui.screens
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,7 +20,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -53,6 +51,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
 import com.mohammadfaizan.habitquest.ui.components.InputField
+import com.mohammadfaizan.habitquest.ui.components.CategoryChips
+import com.mohammadfaizan.habitquest.ui.components.ColorOption
 import com.mohammadfaizan.habitquest.ui.viewmodel.AddHabitViewModel
 
 @Composable
@@ -64,11 +64,9 @@ fun AddHabitScreen(
 ) {
     BackHandler(onBack = onBack)
 
-    // Use ViewModel state if provided, otherwise use local state
     val formState by viewModel?.formState?.collectAsState() ?: remember { mutableStateOf(null) }
     val validation by viewModel?.validation?.collectAsState() ?: remember { mutableStateOf(null) }
 
-    // Local state for when ViewModel is not provided
     var name by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var selectedColor by remember { mutableStateOf("#FF0000") }
@@ -78,7 +76,6 @@ fun AddHabitScreen(
     var reminderEnabled by remember { mutableStateOf(false) }
     var reminderTime by remember { mutableStateOf("09:00") }
 
-    // Use ViewModel state or local state
     val currentName = formState?.name ?: name
     val currentDescription = formState?.description ?: description
     val currentColor = formState?.color ?: selectedColor
@@ -92,7 +89,6 @@ fun AddHabitScreen(
     val targetCountError =
         validation?.isTargetCountValid?.let { if (!it) "Target count must be greater than 0" else null }
 
-    // Update functions
     val updateName = { newName: String ->
         if (viewModel != null) {
             viewModel.updateName(newName)
@@ -157,7 +153,7 @@ fun AddHabitScreen(
         }
     }
 
-    // Available options
+    // Available color options
     val availableColors = viewModel?.getAvailableColors() ?: listOf(
         "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF",
         "#00FFFF", "#FFA500", "#800080", "#008000", "#FFC0CB"
@@ -169,7 +165,7 @@ fun AddHabitScreen(
     )
 
     val availableFrequencies =
-        viewModel?.getAvailableFrequencies() ?: listOf("DAILY", "WEEKLY", "MONTHLY", "CUSTOM")
+        viewModel?.getAvailableFrequencies() ?: listOf("DAILY", "WEEKLY", "MONTHLY")
 
     Column(
         modifier = modifier
@@ -177,7 +173,6 @@ fun AddHabitScreen(
             .verticalScroll(rememberScrollState())
             .padding(10.dp)
     ) {
-        // Header
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -213,7 +208,6 @@ fun AddHabitScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Description (Optional)
         InputField(
             value = currentDescription,
             onValueChange = updateDescription,
@@ -225,7 +219,6 @@ fun AddHabitScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Color Selection
         Text(
             text = "Choose Color",
             style = MaterialTheme.typography.titleMedium,
@@ -249,7 +242,6 @@ fun AddHabitScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Category Selection
         Text(
             text = "Category (Optional)",
             style = MaterialTheme.typography.titleMedium,
@@ -263,7 +255,7 @@ fun AddHabitScreen(
             contentPadding = PaddingValues(vertical = 8.dp)
         ) {
             items(availableCategories) { category ->
-                CategoryChip(
+                CategoryChips(
                     category = category,
                     isSelected = currentCategory == category,
                     onCategorySelected = { updateCategory(category) }
@@ -272,8 +264,8 @@ fun AddHabitScreen(
         }
 
         Spacer(modifier = Modifier.height(20.dp))
-
-        // Frequency Selection
+        /*
+        Daily Weekly Frequescy selector
         Text(
             text = "Frequency",
             style = MaterialTheme.typography.titleMedium,
@@ -296,8 +288,8 @@ fun AddHabitScreen(
         }
 
         Spacer(modifier = Modifier.height(20.dp))
+        */
 
-        // Target Count
         Text(
             text = "Target Count",
             style = MaterialTheme.typography.titleMedium,
@@ -353,7 +345,6 @@ fun AddHabitScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Reminder Settings
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -393,7 +384,6 @@ fun AddHabitScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Create Button
         Button(
             onClick = {
                 onCreateHabit(
@@ -412,83 +402,5 @@ fun AddHabitScreen(
         ) {
             Text("Create Habit")
         }
-    }
-}
-
-@Composable
-private fun ColorOption(
-    color: String,
-    isSelected: Boolean,
-    onColorSelected: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .size(48.dp)
-            .clip(CircleShape)
-            .background(Color(color.toColorInt()))
-            .border(
-                width = if (isSelected) 3.dp else 1.dp,
-                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-                shape = CircleShape
-            )
-            .clickable { onColorSelected() },
-        contentAlignment = Alignment.Center
-    ) {
-        if (isSelected) {
-            Icon(
-                imageVector = Icons.Default.Check,
-                contentDescription = "Selected",
-                tint = Color.White,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun CategoryChip(
-    category: String,
-    isSelected: Boolean,
-    onCategorySelected: () -> Unit
-) {
-    Surface(
-        modifier = Modifier.clickable { onCategorySelected() },
-        shape = RoundedCornerShape(16.dp),
-        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
-        border = BorderStroke(
-            width = 1.dp,
-            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-        )
-    ) {
-        Text(
-            text = category,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-            style = MaterialTheme.typography.bodyMedium
-        )
-    }
-}
-
-@Composable
-private fun FrequencyChip(
-    frequency: String,
-    isSelected: Boolean,
-    onFrequencySelected: () -> Unit
-) {
-    Surface(
-        modifier = Modifier.clickable { onFrequencySelected() },
-        shape = RoundedCornerShape(16.dp),
-        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
-        border = BorderStroke(
-            width = 1.dp,
-            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-        )
-    ) {
-        Text(
-            text = frequency,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-            style = MaterialTheme.typography.bodyMedium
-        )
     }
 }

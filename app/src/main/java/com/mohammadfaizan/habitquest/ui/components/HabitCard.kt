@@ -1,6 +1,7 @@
 package com.mohammadfaizan.habitquest.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -58,23 +59,18 @@ fun HabitCard(
     val habitColor = Color(habit.color.toColorInt())
     val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
 
-    // Check if habit is completed today
     val isCompletedToday = completions.any { completion ->
         completion.dateKey == today
     }
 
-    // Get today's completion count for multi-target habits
     val todayCompletionCount = completions.count { completion ->
         completion.dateKey == today
     }
 
-    // Check if habit is fully completed for today
     val isFullyCompleted = todayCompletionCount >= habit.targetCount
 
-    // Check if we can still complete more times today
     val canCompleteMore = todayCompletionCount < habit.targetCount
 
-    // Debug: Print completion info
     LaunchedEffect(completions) {
         println("Habit ${habit.name}: ${completions.size} completions, today: $todayCompletionCount/${habit.targetCount}, canComplete: $canCompleteMore")
     }
@@ -83,26 +79,24 @@ fun HabitCard(
         modifier = modifier
             .fillMaxWidth()
             .clickable { onHabitClick() },
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(10.dp)
         ) {
-            // Header row with icon, name, and complete button
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Habit icon
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(habitColor),
+                        .size(35.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(habitColor.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -115,7 +109,6 @@ fun HabitCard(
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                // Habit name and description
                 Column(
                     modifier = Modifier.weight(1f)
                 ) {
@@ -136,7 +129,6 @@ fun HabitCard(
                         )
                     }
 
-                    // Show completion progress for multi-target habits
                     if (habit.targetCount > 1) {
                         Text(
                             text = "$todayCompletionCount/${habit.targetCount} completed today",
@@ -150,16 +142,15 @@ fun HabitCard(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // Complete button
                 Box(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
                         .background(
                             when {
-                                isFullyCompleted -> habitColor
+                                isFullyCompleted -> habitColor.copy(alpha = 0.9f)
                                 isCompletedToday -> habitColor.copy(alpha = 0.7f)
-                                else -> MaterialTheme.colorScheme.surfaceVariant
+                                else -> habitColor.copy(alpha = 0.1f)
                             }
                         )
                         .clickable {
@@ -178,196 +169,16 @@ fun HabitCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            // Contribution graph
             ContributionGraph(
                 habit = habit,
                 completions = completions,
                 modifier = Modifier.fillMaxWidth()
             )
-        }
-    }
-}
 
-@Composable
-fun ContributionGraph(
-    habit: Habit,
-    completions: List<HabitCompletion>,
-    modifier: Modifier = Modifier
-) {
-    val habitColor = Color(habit.color.toColorInt())
-    Calendar.getInstance()
-    val graphDays = 182 // GitHub uses 364 days (52 columns × 7 rows)
+            Spacer(modifier = Modifier.height(6.dp))
 
-    // Create a map of completion dates for quick lookup
-    val completionMap = completions.groupBy { it.dateKey }
-
-    // Generate the last 364 days in GitHub's pattern
-    // GitHub starts from today and goes backwards
-    val days = remember {
-        List(graphDays) { dayOffset ->
-            val date = Calendar.getInstance().apply {
-                add(Calendar.DAY_OF_YEAR, -dayOffset)
-            }
-            val dateKey = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(date.time)
-            val dayCompletions = completionMap[dateKey] ?: emptyList()
-            DayData(
-                dateKey = dateKey,
-                completionCount = dayCompletions.size,
-                targetCount = habit.targetCount
-            )
-        }.reversed() // Reverse to match GitHub's order (newest first)
-    }
-
-    // Create 52 columns × 7 rows grid (GitHub's structure)
-    // Today is at top-right, yesterday is below it in same column
-    // Each column represents a week
-    // Each row represents a day of the week (Sunday to Saturday)
-    val gridData = remember(days) {
-        val columns = 26
-        val rows = 7
-        val grid = Array(rows) { row ->
-            Array(columns) { col ->
-                // Pattern: top-right = today, fill backwards
-                val dayIndex = row + col * rows
-                if (dayIndex < days.size) {
-                    days[dayIndex]
-                } else {
-                    DayData("", 0, habit.targetCount) // Empty day
-                }
-            }
-        }
-        grid
-    }
-
-    Column(
-        modifier = modifier
-    ) {
-        // GitHub-style grid: 52 columns × 7 rows
-        Column(
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            for (row in 0 until 7) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    // Render each column (week)
-                    for (col in 0 until 26) {
-                        val day = gridData[row][col]
-                        ContributionDay(
-                            day = day,
-                            habitColor = habitColor,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Less",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.width(4.dp))
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(1.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(RoundedCornerShape(1.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-                )
-
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(RoundedCornerShape(1.dp))
-                        .background(habitColor.copy(alpha = 0.3f))
-                )
-
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(RoundedCornerShape(1.dp))
-                        .background(habitColor)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(4.dp))
-
-            Text(
-                text = "More",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-fun ContributionDay(
-    day: DayData,
-    habitColor: Color,
-    modifier: Modifier = Modifier
-) {
-    val alpha = when {
-        day.completionCount == 0 -> 0.1f
-        day.completionCount >= day.targetCount -> 1.0f
-        else -> (day.completionCount.toFloat() / day.targetCount.toFloat()) * 0.8f + 0.2f
-    }
-
-    Box(
-        modifier = modifier
-            .height(10.dp)
-            .clip(RoundedCornerShape(2.dp))
-            .background(
-                if (day.completionCount > 0) {
-                    habitColor.copy(alpha = alpha)
-                } else {
-                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                }
-            )
-    )
-}
-
-data class DayData(
-    val dateKey: String,
-    val completionCount: Int,
-    val targetCount: Int
-)
-
-@Composable
-fun HabitList(
-    habits: List<Habit>,
-    completions: Map<Long, List<HabitCompletion>> = emptyMap(),
-    onHabitClick: (Habit) -> Unit = {},
-    onCompleteClick: (Habit) -> Unit = {},
-    modifier: Modifier = Modifier
-) {
-    LazyColumn(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(16.dp)
-    ) {
-        items(habits) { habit ->
-            HabitCard(
-                habit = habit,
-                completions = completions[habit.id] ?: emptyList(),
-                onHabitClick = { onHabitClick(habit) },
-                onCompleteClick = { onCompleteClick(habit) }
-            )
         }
     }
 }

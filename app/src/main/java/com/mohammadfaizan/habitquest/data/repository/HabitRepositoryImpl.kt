@@ -10,7 +10,6 @@ class HabitRepositoryImpl(
     private val habitDao: HabitDao
 ) : HabitRepository {
 
-    // Habit Operations
     override fun getAllHabits(): Flow<List<Habit>> {
         return habitDao.getAllHabits()
     }
@@ -39,7 +38,6 @@ class HabitRepositoryImpl(
         habitDao.deleteHabitById(habitId)
     }
 
-    // Search and Filter
     override fun searchHabits(query: String): Flow<List<Habit>> {
         return habitDao.searchHabits(query)
     }
@@ -52,7 +50,6 @@ class HabitRepositoryImpl(
         return habitDao.getHabitsCreatedSince(startDate)
     }
 
-    // Progress and Statistics
     override suspend fun updateStreak(habitId: Long, streak: Int) {
         habitDao.updateStreak(habitId, streak)
     }
@@ -73,12 +70,10 @@ class HabitRepositoryImpl(
         return habitDao.getHabitCountByCategory(category)
     }
 
-    // Categories
     override fun getAllCategories(): Flow<List<String>> {
         return habitDao.getAllCategories()
     }
 
-    // Top Performing Habits
     override fun getTopStreakHabits(limit: Int): Flow<List<Habit>> {
         return habitDao.getTopStreakHabits(limit)
     }
@@ -87,7 +82,6 @@ class HabitRepositoryImpl(
         return habitDao.getTopCompletionHabits(limit)
     }
 
-    // Bulk Operations
     override suspend fun deactivateHabitsByCategory(category: String) {
         habitDao.deactivateHabitsByCategory(category)
     }

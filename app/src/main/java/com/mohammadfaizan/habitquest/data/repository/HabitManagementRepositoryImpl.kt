@@ -26,13 +26,11 @@ class HabitManagementRepositoryImpl(
             val habit = habitRepository.getHabitById(habitId) ?: return false
             val dateKey = DateUtils.getCurrentDateKey()
 
-            // Get current completion count for today
             val todayCompletions =
                 habitCompletionRepository.getCompletionsForSpecificDate(habitId, dateKey)
 
-            // Check if we've reached the target count for today
             if (todayCompletions >= habit.targetCount) {
-                return true // Already reached target for today
+                return true
             }
 
             // Create completion
@@ -43,10 +41,8 @@ class HabitManagementRepositoryImpl(
             )
             habitCompletionRepository.insertCompletion(completion)
 
-            // Update habit statistics
             habitRepository.incrementCompletions(habitId)
 
-            // Calculate and update streak
             calculateAndUpdateStreak(habitId)
 
             true
@@ -98,13 +94,11 @@ class HabitManagementRepositoryImpl(
         val currentStreak = habit.currentStreak
         val longestStreak = habit.longestStreak
 
-        // Calculate completion rate (last 30 days)
         val thirtyDaysAgo = DateUtils.getDateKeyForDaysAgo(30)
         val recentCompletions =
             habitCompletionRepository.getCompletionsSinceDate(habitId, thirtyDaysAgo)
         val completionRate = if (recentCompletions > 0) (recentCompletions / 30.0f) * 100 else 0f
 
-        // Calculate average completions per day
         val averageCompletionsPerDay = if (totalCompletions > 0) {
             val daysSinceCreation = getDaysSinceCreation(habit.createdAt)
             if (daysSinceCreation > 0) totalCompletions.toFloat() / daysSinceCreation else 0f
@@ -187,7 +181,6 @@ class HabitManagementRepositoryImpl(
         )
     }
 
-    // Helper methods
     private fun getCurrentDateKey(): String {
         return DateUtils.getCurrentDateKey()
     }

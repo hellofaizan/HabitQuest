@@ -167,7 +167,7 @@ class AddHabitViewModel @Inject constructor(
     }
 
     fun getAvailableFrequencies(): List<String> {
-        return listOf("DAILY", "WEEKLY", "MONTHLY", "CUSTOM")
+        return listOf("DAILY", "WEEKLY", "MONTHLY")
     }
 
     fun getAvailableColors(): List<String> {

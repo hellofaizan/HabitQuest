@@ -84,9 +84,8 @@ fun OnboardingScreen(
                 modifier = Modifier
                     .fillMaxWidth()
             ) {
-                // Gradient Image behind everything
                 Image(
-                    painter = painterResource(id = R.drawable.gradient_hq), // Replace with your actual image resource
+                    painter = painterResource(id = R.drawable.gradient_hq),
                     contentDescription = null,
                     contentScale = ContentScale.FillWidth,
                     modifier = Modifier

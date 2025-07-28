@@ -5,10 +5,12 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
@@ -19,6 +21,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.room.Room
 import com.mohammadfaizan.habitquest.data.local.AppDatabase
@@ -57,7 +60,6 @@ class MainActivity : ComponentActivity() {
                         ).build()
                     }
 
-                    // Initialize repositories and use cases
                     val preferencesRepo =
                         remember { PreferencesRepositoryImpl(db.appPreferencesDao()) }
                     val habitRepo = remember { HabitRepositoryImpl(db.habitDao()) }
@@ -89,12 +91,11 @@ class MainActivity : ComponentActivity() {
 
                     when (hasSeenOnboarding) {
                         null -> {
-                            // Loading state (optional)
-                            Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                                Text(
-                                    text = "Loading...",
-                                    modifier = Modifier.padding(innerPadding)
-                                )
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
                             }
                         }
 
@@ -127,7 +128,6 @@ class MainActivity : ComponentActivity() {
                                     viewModel = addHabitViewModel
                                 )
 
-                                // Handle ViewModel actions
                                 LaunchedEffect(addHabitViewModel.actions) {
                                     addHabitViewModel.actions.collect { action ->
                                         action?.let {
