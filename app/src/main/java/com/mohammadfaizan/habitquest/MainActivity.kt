@@ -13,7 +13,6 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -21,26 +20,25 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.room.Room
 import com.mohammadfaizan.habitquest.data.local.AppDatabase
-import com.mohammadfaizan.habitquest.data.repository.HabitRepositoryImpl
-import com.mohammadfaizan.habitquest.data.repository.HabitManagementRepositoryImpl
 import com.mohammadfaizan.habitquest.data.repository.HabitCompletionRepositoryImpl
+import com.mohammadfaizan.habitquest.data.repository.HabitManagementRepositoryImpl
+import com.mohammadfaizan.habitquest.data.repository.HabitRepositoryImpl
 import com.mohammadfaizan.habitquest.domain.repository.PreferencesRepositoryImpl
 import com.mohammadfaizan.habitquest.domain.usecase.AddHabitUseCase
-import com.mohammadfaizan.habitquest.domain.usecase.GetHabitsUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.CompleteHabitUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.DeleteHabitUseCase
+import com.mohammadfaizan.habitquest.domain.usecase.GetHabitsUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.GetHabitsWithCompletionStatusUseCase
 import com.mohammadfaizan.habitquest.ui.components.TopAppBarComponent
 import com.mohammadfaizan.habitquest.ui.screens.AddHabitScreen
 import com.mohammadfaizan.habitquest.ui.screens.HomeScreen
 import com.mohammadfaizan.habitquest.ui.screens.onbording.OnboardingScreen
 import com.mohammadfaizan.habitquest.ui.theme.HabitQuestTheme
+import com.mohammadfaizan.habitquest.ui.viewmodel.AddHabitActionType
 import com.mohammadfaizan.habitquest.ui.viewmodel.AddHabitViewModel
 import com.mohammadfaizan.habitquest.ui.viewmodel.HabitViewModel
-import com.mohammadfaizan.habitquest.ui.viewmodel.AddHabitActionType
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -58,17 +56,29 @@ class MainActivity : ComponentActivity() {
                             "app-db"
                         ).build()
                     }
-                    
+
                     // Initialize repositories and use cases
-                    val preferencesRepo = remember { PreferencesRepositoryImpl(db.appPreferencesDao()) }
+                    val preferencesRepo =
+                        remember { PreferencesRepositoryImpl(db.appPreferencesDao()) }
                     val habitRepo = remember { HabitRepositoryImpl(db.habitDao()) }
-                    val habitCompletionRepo = remember { HabitCompletionRepositoryImpl(db.habitCompletionDao()) }
-                    val habitManagementRepo = remember { HabitManagementRepositoryImpl(habitRepo, habitCompletionRepo) }
+                    val habitCompletionRepo =
+                        remember { HabitCompletionRepositoryImpl(db.habitCompletionDao()) }
+                    val habitManagementRepo =
+                        remember { HabitManagementRepositoryImpl(habitRepo, habitCompletionRepo) }
                     val addHabitUseCase = remember { AddHabitUseCase(habitRepo) }
 
                     val addHabitViewModel = remember { AddHabitViewModel(addHabitUseCase) }
-                    val habitViewModel = remember { HabitViewModel(addHabitUseCase, GetHabitsUseCase(habitRepo, habitManagementRepo), CompleteHabitUseCase(habitManagementRepo), DeleteHabitUseCase(habitManagementRepo), GetHabitsWithCompletionStatusUseCase(habitManagementRepo), habitCompletionRepo) }
-                    
+                    val habitViewModel = remember {
+                        HabitViewModel(
+                            addHabitUseCase,
+                            GetHabitsUseCase(habitRepo, habitManagementRepo),
+                            CompleteHabitUseCase(habitManagementRepo),
+                            DeleteHabitUseCase(habitManagementRepo),
+                            GetHabitsWithCompletionStatusUseCase(habitManagementRepo),
+                            habitCompletionRepo
+                        )
+                    }
+
                     var hasSeenOnboarding by remember { mutableStateOf<Boolean?>(null) }
                     var showAddHabitScreen by remember { mutableStateOf(false) }
                     val scope = rememberCoroutineScope()
@@ -103,7 +113,7 @@ class MainActivity : ComponentActivity() {
                         else -> {
                             if (showAddHabitScreen) {
                                 AddHabitScreen(
-                                    onBack = { 
+                                    onBack = {
                                         showAddHabitScreen = false
                                         addHabitViewModel.resetForm()
                                     },
@@ -116,7 +126,7 @@ class MainActivity : ComponentActivity() {
                                     modifier = Modifier.padding(innerPadding),
                                     viewModel = addHabitViewModel
                                 )
-                                
+
                                 // Handle ViewModel actions
                                 LaunchedEffect(addHabitViewModel.actions) {
                                     addHabitViewModel.actions.collect { action ->
@@ -131,6 +141,7 @@ class MainActivity : ComponentActivity() {
                                                     showAddHabitScreen = false
                                                     addHabitViewModel.resetForm()
                                                 }
+
                                                 AddHabitActionType.VALIDATION_ERROR -> {
                                                     Toast.makeText(
                                                         context,
@@ -138,6 +149,7 @@ class MainActivity : ComponentActivity() {
                                                         Toast.LENGTH_LONG
                                                     ).show()
                                                 }
+
                                                 AddHabitActionType.NETWORK_ERROR -> {
                                                     Toast.makeText(
                                                         context,

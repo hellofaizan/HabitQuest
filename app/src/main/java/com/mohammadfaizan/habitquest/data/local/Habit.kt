@@ -15,7 +15,7 @@ data class Habit(
     val targetCount: Int = 1,
     val frequency: HabitFrequency = HabitFrequency.DAILY,
     val reminderTime: String? = null,
-    val reminderEnabled : Boolean = false,
+    val reminderEnabled: Boolean = false,
     val isActive: Boolean = true,
     val currentStreak: Int = 0,
     val longestStreak: Int = 0,

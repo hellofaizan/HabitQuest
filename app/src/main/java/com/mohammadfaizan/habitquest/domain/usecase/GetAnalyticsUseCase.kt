@@ -2,8 +2,8 @@ package com.mohammadfaizan.habitquest.domain.usecase
 
 import com.mohammadfaizan.habitquest.domain.repository.HabitManagementRepository
 import com.mohammadfaizan.habitquest.domain.repository.HabitRepository
-import com.mohammadfaizan.habitquest.domain.repository.WeeklyProgress
 import com.mohammadfaizan.habitquest.domain.repository.MonthlyProgress
+import com.mohammadfaizan.habitquest.domain.repository.WeeklyProgress
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
@@ -33,7 +33,7 @@ class GetAnalyticsUseCase @Inject constructor(
     private val habitRepository: HabitRepository,
     private val habitManagementRepository: HabitManagementRepository
 ) {
-    
+
     suspend operator fun invoke(request: GetAnalyticsRequest): GetAnalyticsResult {
         return try {
             if (request.habitId != null) {
@@ -47,22 +47,22 @@ class GetAnalyticsUseCase @Inject constructor(
             GetAnalyticsResult(success = false, error = "Failed to get analytics: ${e.message}")
         }
     }
-    
+
     private suspend fun getHabitAnalyticsInternal(
         habitId: Long,
         weekStart: String?,
         month: String?
     ): GetAnalyticsResult {
         val stats = habitManagementRepository.getHabitStats(habitId)
-        
+
         val weeklyProgress = weekStart?.let {
             habitManagementRepository.getWeeklyProgress(habitId, it)
         }
-        
+
         val monthlyProgress = month?.let {
             habitManagementRepository.getMonthlyProgress(habitId, it)
         }
-        
+
         val analytics = AnalyticsData(
             totalHabits = 1,
             activeHabits = 1,
@@ -72,29 +72,29 @@ class GetAnalyticsUseCase @Inject constructor(
             weeklyProgress = weeklyProgress,
             monthlyProgress = monthlyProgress
         )
-        
+
         return GetAnalyticsResult(success = true, analytics = analytics)
     }
-    
+
     private suspend fun getOverallAnalyticsInternal(): GetAnalyticsResult {
         val totalHabits = habitRepository.getTotalHabitCount()
         val activeHabits = habitRepository.getActiveHabitCount()
-        
+
         // Get top performing habits
         val topStreakHabits = habitRepository.getTopStreakHabits(5).first()
         val topCompletionHabits = habitRepository.getTopCompletionHabits(5).first()
-        
+
         val topPerformingHabits = (topStreakHabits + topCompletionHabits)
             .distinctBy { it.id }
             .take(5)
             .map { it.name }
-        
+
         // Calculate average completion rate (simplified)
         val averageCompletionRate = if (activeHabits > 0) {
             // This would need more complex calculation in a real app
             75.0f // Placeholder
         } else 0.0f
-        
+
         val analytics = AnalyticsData(
             totalHabits = totalHabits,
             activeHabits = activeHabits,
@@ -102,23 +102,23 @@ class GetAnalyticsUseCase @Inject constructor(
             averageCompletionRate = averageCompletionRate,
             topPerformingHabits = topPerformingHabits
         )
-        
+
         return GetAnalyticsResult(success = true, analytics = analytics)
     }
-    
+
     // Convenience methods
     suspend fun getHabitAnalytics(habitId: Long): GetAnalyticsResult {
         return invoke(GetAnalyticsRequest(habitId = habitId))
     }
-    
+
     suspend fun getWeeklyAnalytics(habitId: Long, weekStart: String): GetAnalyticsResult {
         return invoke(GetAnalyticsRequest(habitId = habitId, weekStart = weekStart))
     }
-    
+
     suspend fun getMonthlyAnalytics(habitId: Long, month: String): GetAnalyticsResult {
         return invoke(GetAnalyticsRequest(habitId = habitId, month = month))
     }
-    
+
     suspend fun getOverallAnalytics(): GetAnalyticsResult {
         return invoke(GetAnalyticsRequest())
     }

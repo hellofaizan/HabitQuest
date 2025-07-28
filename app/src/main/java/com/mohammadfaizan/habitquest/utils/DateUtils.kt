@@ -1,26 +1,28 @@
 package com.mohammadfaizan.habitquest.utils
 
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 object DateUtils {
-    
+
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-    
+
     /**
      * Get the current date key in YYYY-MM-DD format
      */
     fun getCurrentDateKey(): String {
         return dateFormat.format(Date())
     }
-    
+
     /**
      * Get the date key for a specific date
      */
     fun getDateKey(date: Date): String {
         return dateFormat.format(date)
     }
-    
+
     /**
      * Get the date key for a specific number of days ago
      */
@@ -29,21 +31,21 @@ object DateUtils {
         calendar.add(Calendar.DAY_OF_YEAR, -daysAgo)
         return dateFormat.format(calendar.time)
     }
-    
+
     /**
      * Check if two date keys represent the same day
      */
     fun isSameDay(dateKey1: String, dateKey2: String): Boolean {
         return dateKey1 == dateKey2
     }
-    
+
     /**
      * Check if a date key represents today
      */
     fun isToday(dateKey: String): Boolean {
         return dateKey == getCurrentDateKey()
     }
-    
+
     /**
      * Get the number of days between two date keys
      */
@@ -60,7 +62,7 @@ object DateUtils {
             return 0
         }
     }
-    
+
     /**
      * Get the start of the current week (Monday)
      */
@@ -69,7 +71,7 @@ object DateUtils {
         calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
         return dateFormat.format(calendar.time)
     }
-    
+
     /**
      * Get the current month in YYYY-MM format
      */
@@ -77,7 +79,7 @@ object DateUtils {
         val monthFormat = SimpleDateFormat("yyyy-MM", Locale.getDefault())
         return monthFormat.format(Date())
     }
-    
+
     /**
      * Check if it's a new day (useful for midnight reset)
      */
@@ -85,7 +87,7 @@ object DateUtils {
         if (lastDateKey == null) return true
         return !isToday(lastDateKey)
     }
-    
+
     /**
      * Get the time until midnight in milliseconds
      */

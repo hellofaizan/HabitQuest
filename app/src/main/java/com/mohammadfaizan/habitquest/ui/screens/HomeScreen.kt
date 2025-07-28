@@ -37,7 +37,7 @@ fun HomeScreen(
     val uiState by habitViewModel.uiState.collectAsState()
     val actions by habitViewModel.actions.collectAsState()
     val context = LocalContext.current
-    
+
     // Handle ViewModel actions
     LaunchedEffect(actions) {
         actions?.let { action ->
@@ -47,28 +47,31 @@ fun HomeScreen(
                     habitViewModel.loadHabits()
                     habitViewModel.loadHabitsWithCompletionStatus()
                 }
+
                 HabitActionType.COMPLETE_HABIT -> {
                     // Habit was completed, refresh the list
                     habitViewModel.loadHabitsWithCompletionStatus()
                     Toast.makeText(context, "Habit completed!", Toast.LENGTH_SHORT).show()
                 }
+
                 HabitActionType.DELETE_HABIT -> {
                     // Habit was deleted, refresh the list
                     habitViewModel.loadHabits()
                     habitViewModel.loadHabitsWithCompletionStatus()
                 }
+
                 else -> {}
             }
             habitViewModel.clearActions()
         }
     }
-    
+
     // Load habits on first launch
     LaunchedEffect(Unit) {
         habitViewModel.loadHabits()
         habitViewModel.loadHabitsWithCompletionStatus()
     }
-    
+
     Column(
         modifier = modifier.fillMaxSize()
     ) {
@@ -82,14 +85,14 @@ fun HomeScreen(
                     CircularProgressIndicator()
                 }
             }
-            
+
             uiState.habits.isEmpty() -> {
                 EmptyHabitState(
                     onAddHabit = onAddHabitClick,
                     modifier = Modifier.fillMaxSize()
                 )
             }
-            
+
             else -> {
                 HabitListContent(
                     habits = uiState.habits,
@@ -118,7 +121,7 @@ private fun HabitListContent(
     val completionsMap = remember(habitsWithCompletionStatus, habitCompletions) {
         habitCompletions
     }
-    
+
     LazyColumn(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(12.dp),

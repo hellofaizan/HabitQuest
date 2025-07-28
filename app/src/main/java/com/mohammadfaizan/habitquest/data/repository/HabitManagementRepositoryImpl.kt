@@ -1,15 +1,20 @@
 package com.mohammadfaizan.habitquest.data.repository
 
-import com.mohammadfaizan.habitquest.data.local.Habit
 import com.mohammadfaizan.habitquest.data.local.HabitCompletion
+import com.mohammadfaizan.habitquest.domain.repository.HabitCompletionRepository
 import com.mohammadfaizan.habitquest.domain.repository.HabitManagementRepository
 import com.mohammadfaizan.habitquest.domain.repository.HabitRepository
-import com.mohammadfaizan.habitquest.domain.repository.HabitCompletionRepository
-import com.mohammadfaizan.habitquest.domain.repository.*
-import kotlinx.coroutines.flow.first
+import com.mohammadfaizan.habitquest.domain.repository.HabitStats
+import com.mohammadfaizan.habitquest.domain.repository.HabitWithCompletionStatus
+import com.mohammadfaizan.habitquest.domain.repository.HabitWithCompletions
+import com.mohammadfaizan.habitquest.domain.repository.MonthlyProgress
+import com.mohammadfaizan.habitquest.domain.repository.WeeklyProgress
 import com.mohammadfaizan.habitquest.utils.DateUtils
+import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 class HabitManagementRepositoryImpl(
     private val habitRepository: HabitRepository,
@@ -22,8 +27,9 @@ class HabitManagementRepositoryImpl(
             val dateKey = DateUtils.getCurrentDateKey()
 
             // Get current completion count for today
-            val todayCompletions = habitCompletionRepository.getCompletionsForSpecificDate(habitId, dateKey)
-            
+            val todayCompletions =
+                habitCompletionRepository.getCompletionsForSpecificDate(habitId, dateKey)
+
             // Check if we've reached the target count for today
             if (todayCompletions >= habit.targetCount) {
                 return true // Already reached target for today
@@ -180,22 +186,22 @@ class HabitManagementRepositoryImpl(
             averageCompletionsPerDay = averageCompletionsPerDay
         )
     }
-    
+
     // Helper methods
     private fun getCurrentDateKey(): String {
         return DateUtils.getCurrentDateKey()
     }
-    
+
     private fun getDateKeyForDaysAgo(days: Int): String {
         return DateUtils.getDateKeyForDaysAgo(days)
     }
-    
+
     private fun getDaysSinceCreation(createdAt: Date): Int {
         val now = Date()
         val diffInMillis = now.time - createdAt.time
         return (diffInMillis / (24 * 60 * 60 * 1000)).toInt()
     }
-    
+
     private fun getWeekEnd(weekStart: String): String {
         val calendar = Calendar.getInstance()
         val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())

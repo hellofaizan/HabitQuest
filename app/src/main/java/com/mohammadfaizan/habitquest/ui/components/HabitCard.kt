@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -38,7 +37,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
@@ -59,28 +57,28 @@ fun HabitCard(
 ) {
     val habitColor = Color(habit.color.toColorInt())
     val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-    
+
     // Check if habit is completed today
     val isCompletedToday = completions.any { completion ->
         completion.dateKey == today
     }
-    
+
     // Get today's completion count for multi-target habits
     val todayCompletionCount = completions.count { completion ->
         completion.dateKey == today
     }
-    
+
     // Check if habit is fully completed for today
     val isFullyCompleted = todayCompletionCount >= habit.targetCount
-    
+
     // Check if we can still complete more times today
     val canCompleteMore = todayCompletionCount < habit.targetCount
-    
+
     // Debug: Print completion info
     LaunchedEffect(completions) {
         println("Habit ${habit.name}: ${completions.size} completions, today: $todayCompletionCount/${habit.targetCount}, canComplete: $canCompleteMore")
     }
-    
+
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -107,16 +105,16 @@ fun HabitCard(
                         .background(habitColor),
                     contentAlignment = Alignment.Center
                 ) {
-                                            Icon(
-                            imageVector = Icons.Default.Favorite,
+                    Icon(
+                        imageVector = Icons.Default.Favorite,
                         contentDescription = null,
                         tint = Color.White,
                         modifier = Modifier.size(16.dp)
                     )
                 }
-                
+
                 Spacer(modifier = Modifier.width(12.dp))
-                
+
                 // Habit name and description
                 Column(
                     modifier = Modifier.weight(1f)
@@ -127,7 +125,7 @@ fun HabitCard(
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    
+
                     if (habit.description?.isNotBlank() == true) {
                         Text(
                             text = habit.description,
@@ -137,21 +135,21 @@ fun HabitCard(
                             overflow = TextOverflow.Ellipsis
                         )
                     }
-                    
+
                     // Show completion progress for multi-target habits
                     if (habit.targetCount > 1) {
                         Text(
                             text = "$todayCompletionCount/${habit.targetCount} completed today",
                             style = MaterialTheme.typography.bodySmall,
-                            color = if (isFullyCompleted) 
-                                MaterialTheme.colorScheme.primary 
-                                else MaterialTheme.colorScheme.onSurfaceVariant
+                            color = if (isFullyCompleted)
+                                MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
-                
+
                 Spacer(modifier = Modifier.width(8.dp))
-                
+
                 // Complete button
                 Box(
                     modifier = Modifier
@@ -164,7 +162,7 @@ fun HabitCard(
                                 else -> MaterialTheme.colorScheme.surfaceVariant
                             }
                         )
-                        .clickable { 
+                        .clickable {
                             if (canCompleteMore) {
                                 onCompleteClick()
                             }
@@ -179,9 +177,9 @@ fun HabitCard(
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             // Contribution graph
             ContributionGraph(
                 habit = habit,
@@ -199,12 +197,12 @@ fun ContributionGraph(
     modifier: Modifier = Modifier
 ) {
     val habitColor = Color(habit.color.toColorInt())
-    val today = Calendar.getInstance()
+    Calendar.getInstance()
     val graphDays = 182 // GitHub uses 364 days (52 columns × 7 rows)
-    
+
     // Create a map of completion dates for quick lookup
     val completionMap = completions.groupBy { it.dateKey }
-    
+
     // Generate the last 364 days in GitHub's pattern
     // GitHub starts from today and goes backwards
     val days = remember {
@@ -221,7 +219,7 @@ fun ContributionGraph(
             )
         }.reversed() // Reverse to match GitHub's order (newest first)
     }
-    
+
     // Create 52 columns × 7 rows grid (GitHub's structure)
     // Today is at top-right, yesterday is below it in same column
     // Each column represents a week
@@ -242,7 +240,7 @@ fun ContributionGraph(
         }
         grid
     }
-    
+
     Column(
         modifier = modifier
     ) {
@@ -279,7 +277,7 @@ fun ContributionGraph(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            
+
             Spacer(modifier = Modifier.width(4.dp))
 
             Row(
@@ -306,9 +304,9 @@ fun ContributionGraph(
                         .background(habitColor)
                 )
             }
-            
+
             Spacer(modifier = Modifier.width(4.dp))
-            
+
             Text(
                 text = "More",
                 style = MaterialTheme.typography.labelSmall,
@@ -329,7 +327,7 @@ fun ContributionDay(
         day.completionCount >= day.targetCount -> 1.0f
         else -> (day.completionCount.toFloat() / day.targetCount.toFloat()) * 0.8f + 0.2f
     }
-    
+
     Box(
         modifier = modifier
             .height(10.dp)
@@ -390,27 +388,27 @@ fun EmptyHabitState(
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         Text(
             text = "No habits yet",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurface
         )
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         Text(
             text = "Start building your habits by adding your first one",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
-        
+
         Spacer(modifier = Modifier.height(24.dp))
-        
+
         Button(
             onClick = onAddHabit,
             colors = ButtonDefaults.buttonColors(
@@ -422,9 +420,9 @@ fun EmptyHabitState(
                 contentDescription = null,
                 modifier = Modifier.size(18.dp)
             )
-            
+
             Spacer(modifier = Modifier.width(8.dp))
-            
+
             Text("Add Your First Habit")
         }
     }

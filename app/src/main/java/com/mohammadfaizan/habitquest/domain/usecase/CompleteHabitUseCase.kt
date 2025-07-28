@@ -22,29 +22,34 @@ data class CompleteHabitResult(
 class CompleteHabitUseCase @Inject constructor(
     private val habitManagementRepository: HabitManagementRepository
 ) {
-    
+
     suspend operator fun invoke(request: CompleteHabitRequest): CompleteHabitResult {
         return try {
             val habit = habitManagementRepository.getHabitWithCompletions(request.habitId)
             if (habit == null) {
                 return CompleteHabitResult(success = false, error = "Habit not found")
             }
-            
+
             if (!habit.habit.isActive) {
-                return CompleteHabitResult(success = false, error = "Cannot complete inactive habit")
+                return CompleteHabitResult(
+                    success = false,
+                    error = "Cannot complete inactive habit"
+                )
             }
 
-            val completionSuccess = habitManagementRepository.completeHabit(request.habitId, request.notes)
-            
+            val completionSuccess =
+                habitManagementRepository.completeHabit(request.habitId, request.notes)
+
             if (!completionSuccess) {
                 return CompleteHabitResult(success = false, error = "Failed to complete habit")
             }
 
             val newStreak = habitManagementRepository.calculateAndUpdateStreak(request.habitId)
 
-            val todayCompletions = habitManagementRepository.getHabitsWithCompletionStatus(DateUtils.getCurrentDateKey())
-                .find { it.habit.id == request.habitId }?.completionCount ?: 0
-            
+            val todayCompletions =
+                habitManagementRepository.getHabitsWithCompletionStatus(DateUtils.getCurrentDateKey())
+                    .find { it.habit.id == request.habitId }?.completionCount ?: 0
+
             CompleteHabitResult(
                 success = true,
                 wasAlreadyCompleted = false,
@@ -52,7 +57,7 @@ class CompleteHabitUseCase @Inject constructor(
                 currentCompletions = todayCompletions,
                 targetCount = habit.habit.targetCount
             )
-            
+
         } catch (e: Exception) {
             CompleteHabitResult(success = false, error = "Failed to complete habit: ${e.message}")
         }

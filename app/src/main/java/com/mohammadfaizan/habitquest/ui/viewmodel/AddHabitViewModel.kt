@@ -2,8 +2,8 @@ package com.mohammadfaizan.habitquest.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.mohammadfaizan.habitquest.domain.usecase.AddHabitUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.AddHabitRequest
+import com.mohammadfaizan.habitquest.domain.usecase.AddHabitUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -45,58 +45,58 @@ enum class AddHabitActionType {
 class AddHabitViewModel @Inject constructor(
     private val addHabitUseCase: AddHabitUseCase
 ) : ViewModel() {
-    
+
     private val _formState = MutableStateFlow(AddHabitFormState())
     val formState: StateFlow<AddHabitFormState> = _formState.asStateFlow()
-    
+
     private val _validation = MutableStateFlow(AddHabitFormValidation())
     val validation: StateFlow<AddHabitFormValidation> = _validation.asStateFlow()
-    
+
     private val _actions = MutableStateFlow<AddHabitAction?>(null)
     val actions: StateFlow<AddHabitAction?> = _actions.asStateFlow()
-    
+
     fun updateName(name: String) {
         _formState.value = _formState.value.copy(name = name)
         validateForm()
     }
-    
+
     fun updateDescription(description: String) {
         _formState.value = _formState.value.copy(description = description)
     }
-    
+
     fun updateColor(color: String) {
         _formState.value = _formState.value.copy(color = color)
         validateForm()
     }
-    
+
     fun updateCategory(category: String) {
         _formState.value = _formState.value.copy(category = category)
     }
-    
+
     fun updateFrequency(frequency: String) {
         _formState.value = _formState.value.copy(frequency = frequency)
     }
-    
+
     fun updateTargetCount(targetCount: Int) {
         _formState.value = _formState.value.copy(targetCount = targetCount)
         validateForm()
     }
-    
+
     fun updateReminderEnabled(enabled: Boolean) {
         _formState.value = _formState.value.copy(reminderEnabled = enabled)
     }
-    
+
     fun updateReminderTime(time: String) {
         _formState.value = _formState.value.copy(reminderTime = time)
     }
-    
+
     private fun validateForm() {
         val currentState = _formState.value
         val isNameValid = currentState.name.trim().isNotBlank()
         val isTargetCountValid = currentState.targetCount > 0
         val isColorValid = currentState.color.matches(Regex("^#[0-9A-Fa-f]{6}$"))
         val isFormValid = isNameValid && isTargetCountValid && isColorValid
-        
+
         _validation.value = AddHabitFormValidation(
             isNameValid = isNameValid,
             isTargetCountValid = isTargetCountValid,
@@ -104,16 +104,16 @@ class AddHabitViewModel @Inject constructor(
             isFormValid = isFormValid
         )
     }
-    
+
     fun createHabit() {
         if (!_validation.value.isFormValid) {
             _actions.value = AddHabitAction(AddHabitActionType.VALIDATION_ERROR)
             return
         }
-        
+
         viewModelScope.launch {
             _formState.value = _formState.value.copy(isLoading = true, error = null)
-            
+
             try {
                 val request = AddHabitRequest(
                     name = _formState.value.name.trim(),
@@ -125,20 +125,22 @@ class AddHabitViewModel @Inject constructor(
                     reminderTime = if (_formState.value.reminderEnabled) _formState.value.reminderTime else null,
                     reminderEnabled = _formState.value.reminderEnabled
                 )
-                
+
                 val result = addHabitUseCase(request)
                 if (result.success) {
                     _formState.value = _formState.value.copy(
                         isLoading = false,
                         isSuccess = true
                     )
-                    _actions.value = AddHabitAction(AddHabitActionType.HABIT_CREATED, result.habitId)
+                    _actions.value =
+                        AddHabitAction(AddHabitActionType.HABIT_CREATED, result.habitId)
                 } else {
                     _formState.value = _formState.value.copy(
                         error = result.error,
                         isLoading = false
                     )
-                    _actions.value = AddHabitAction(AddHabitActionType.VALIDATION_ERROR, result.error)
+                    _actions.value =
+                        AddHabitAction(AddHabitActionType.VALIDATION_ERROR, result.error)
                 }
             } catch (e: Exception) {
                 _formState.value = _formState.value.copy(
@@ -149,25 +151,25 @@ class AddHabitViewModel @Inject constructor(
             }
         }
     }
-    
+
     fun resetForm() {
         _formState.value = AddHabitFormState()
         _validation.value = AddHabitFormValidation()
         _actions.value = null
     }
-    
+
     fun clearError() {
         _formState.value = _formState.value.copy(error = null)
     }
-    
+
     fun clearActions() {
         _actions.value = null
     }
-    
+
     fun getAvailableFrequencies(): List<String> {
         return listOf("DAILY", "WEEKLY", "MONTHLY", "CUSTOM")
     }
-    
+
     fun getAvailableColors(): List<String> {
         return listOf(
             "#FF0000", // Red
@@ -182,7 +184,7 @@ class AddHabitViewModel @Inject constructor(
             "#FFC0CB"  // Pink
         )
     }
-    
+
     fun getAvailableCategories(): List<String> {
         return listOf(
             "Health",

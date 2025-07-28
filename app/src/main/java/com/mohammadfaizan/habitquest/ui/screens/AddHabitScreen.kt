@@ -63,11 +63,11 @@ fun AddHabitScreen(
     viewModel: AddHabitViewModel? = null
 ) {
     BackHandler(onBack = onBack)
-    
+
     // Use ViewModel state if provided, otherwise use local state
     val formState by viewModel?.formState?.collectAsState() ?: remember { mutableStateOf(null) }
     val validation by viewModel?.validation?.collectAsState() ?: remember { mutableStateOf(null) }
-    
+
     // Local state for when ViewModel is not provided
     var name by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
@@ -77,7 +77,7 @@ fun AddHabitScreen(
     var targetCount by remember { mutableStateOf(1) }
     var reminderEnabled by remember { mutableStateOf(false) }
     var reminderTime by remember { mutableStateOf("09:00") }
-    
+
     // Use ViewModel state or local state
     val currentName = formState?.name ?: name
     val currentDescription = formState?.description ?: description
@@ -89,8 +89,9 @@ fun AddHabitScreen(
     val currentReminderTime = formState?.reminderTime ?: reminderTime
     val isFormValid = validation?.isFormValid ?: true
     val nameError = validation?.isNameValid?.let { if (!it) "Habit name is required" else null }
-    val targetCountError = validation?.isTargetCountValid?.let { if (!it) "Target count must be greater than 0" else null }
-    
+    val targetCountError =
+        validation?.isTargetCountValid?.let { if (!it) "Target count must be greater than 0" else null }
+
     // Update functions
     val updateName = { newName: String ->
         if (viewModel != null) {
@@ -99,7 +100,7 @@ fun AddHabitScreen(
             name = newName
         }
     }
-    
+
     val updateDescription = { newDescription: String ->
         if (viewModel != null) {
             viewModel.updateDescription(newDescription)
@@ -107,7 +108,7 @@ fun AddHabitScreen(
             description = newDescription
         }
     }
-    
+
     val updateColor = { newColor: String ->
         if (viewModel != null) {
             viewModel.updateColor(newColor)
@@ -115,7 +116,7 @@ fun AddHabitScreen(
             selectedColor = newColor
         }
     }
-    
+
     val updateCategory = { newCategory: String ->
         if (viewModel != null) {
             viewModel.updateCategory(newCategory)
@@ -123,7 +124,7 @@ fun AddHabitScreen(
             selectedCategory = newCategory
         }
     }
-    
+
     val updateFrequency = { newFrequency: String ->
         if (viewModel != null) {
             viewModel.updateFrequency(newFrequency)
@@ -131,7 +132,7 @@ fun AddHabitScreen(
             selectedFrequency = newFrequency
         }
     }
-    
+
     val updateTargetCount = { newTargetCount: Int ->
         if (viewModel != null) {
             viewModel.updateTargetCount(newTargetCount)
@@ -139,7 +140,7 @@ fun AddHabitScreen(
             targetCount = newTargetCount
         }
     }
-    
+
     val updateReminderEnabled = { enabled: Boolean ->
         if (viewModel != null) {
             viewModel.updateReminderEnabled(enabled)
@@ -147,7 +148,7 @@ fun AddHabitScreen(
             reminderEnabled = enabled
         }
     }
-    
+
     val updateReminderTime = { time: String ->
         if (viewModel != null) {
             viewModel.updateReminderTime(time)
@@ -155,20 +156,21 @@ fun AddHabitScreen(
             reminderTime = time
         }
     }
-    
+
     // Available options
     val availableColors = viewModel?.getAvailableColors() ?: listOf(
-        "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", 
+        "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF",
         "#00FFFF", "#FFA500", "#800080", "#008000", "#FFC0CB"
     )
-    
+
     val availableCategories = viewModel?.getAvailableCategories() ?: listOf(
-        "Health", "Fitness", "Learning", "Productivity", 
+        "Health", "Fitness", "Learning", "Productivity",
         "Mindfulness", "Social", "Finance", "Creative", "Other"
     )
-    
-    val availableFrequencies = viewModel?.getAvailableFrequencies() ?: listOf("DAILY", "WEEKLY", "MONTHLY", "CUSTOM")
-    
+
+    val availableFrequencies =
+        viewModel?.getAvailableFrequencies() ?: listOf("DAILY", "WEEKLY", "MONTHLY", "CUSTOM")
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -186,18 +188,18 @@ fun AddHabitScreen(
                     contentDescription = "Go Back"
                 )
             }
-            
+
             Spacer(modifier = Modifier.width(4.dp))
-            
+
             Text(
                 text = "Create New Habit",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
         }
-        
+
         Spacer(modifier = Modifier.height(20.dp))
-        
+
         // Habit Name (Required)
         InputField(
             value = currentName,
@@ -208,9 +210,9 @@ fun AddHabitScreen(
             isError = nameError != null,
             errorMessage = nameError
         )
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         // Description (Optional)
         InputField(
             value = currentDescription,
@@ -220,18 +222,18 @@ fun AddHabitScreen(
             keyboardType = KeyboardType.Text,
             singleLine = false
         )
-        
+
         Spacer(modifier = Modifier.height(20.dp))
-        
+
         // Color Selection
         Text(
             text = "Choose Color",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Medium
         )
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(vertical = 8.dp)
@@ -244,18 +246,18 @@ fun AddHabitScreen(
                 )
             }
         }
-        
+
         Spacer(modifier = Modifier.height(20.dp))
-        
+
         // Category Selection
         Text(
             text = "Category (Optional)",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Medium
         )
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(vertical = 8.dp)
@@ -268,18 +270,18 @@ fun AddHabitScreen(
                 )
             }
         }
-        
+
         Spacer(modifier = Modifier.height(20.dp))
-        
+
         // Frequency Selection
         Text(
             text = "Frequency",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Medium
         )
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(vertical = 8.dp)
@@ -292,18 +294,18 @@ fun AddHabitScreen(
                 )
             }
         }
-        
+
         Spacer(modifier = Modifier.height(20.dp))
-        
+
         // Target Count
         Text(
             text = "Target Count",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Medium
         )
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -317,18 +319,18 @@ fun AddHabitScreen(
                     contentDescription = "Add Target"
                 )
             }
-            
+
             Spacer(modifier = Modifier.width(16.dp))
-            
+
             Text(
                 text = currentTargetCount.toString(),
                 style = MaterialTheme.typography.headlineMedium,
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Center
             )
-            
+
             Spacer(modifier = Modifier.width(16.dp))
-            
+
             OutlinedButton(
                 onClick = { updateTargetCount(currentTargetCount + 1) },
                 modifier = Modifier.size(48.dp)
@@ -339,7 +341,7 @@ fun AddHabitScreen(
                 )
             }
         }
-        
+
         if (targetCountError != null) {
             Text(
                 text = targetCountError,
@@ -348,9 +350,9 @@ fun AddHabitScreen(
                 modifier = Modifier.padding(start = 16.dp, top = 4.dp)
             )
         }
-        
+
         Spacer(modifier = Modifier.height(24.dp))
-        
+
         // Reminder Settings
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -361,25 +363,25 @@ fun AddHabitScreen(
                 contentDescription = null,
                 modifier = Modifier.size(24.dp)
             )
-            
+
             Spacer(modifier = Modifier.width(12.dp))
-            
+
             Text(
                 text = "Set Reminder",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.weight(1f)
             )
-            
+
             Switch(
                 checked = currentReminderEnabled,
                 onCheckedChange = updateReminderEnabled
             )
         }
-        
+
         if (currentReminderEnabled) {
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             OutlinedTextField(
                 value = currentReminderTime,
                 onValueChange = updateReminderTime,
@@ -388,9 +390,9 @@ fun AddHabitScreen(
                 singleLine = true
             )
         }
-        
+
         Spacer(modifier = Modifier.height(32.dp))
-        
+
         // Create Button
         Button(
             onClick = {

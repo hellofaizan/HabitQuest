@@ -26,18 +26,21 @@ data class AddHabitResult(
 class AddHabitUseCase @Inject constructor(
     private val habitRepository: HabitRepository
 ) {
-    
+
     suspend operator fun invoke(request: AddHabitRequest): AddHabitResult {
         return try {
             // Validate input
             if (request.name.isBlank()) {
                 return AddHabitResult(success = false, error = "Habit name cannot be empty")
             }
-            
+
             if (request.targetCount <= 0) {
-                return AddHabitResult(success = false, error = "Target count must be greater than 0")
+                return AddHabitResult(
+                    success = false,
+                    error = "Target count must be greater than 0"
+                )
             }
-            
+
             // Create habit entity
             val habit = Habit(
                 name = request.name.trim(),
@@ -50,12 +53,12 @@ class AddHabitUseCase @Inject constructor(
                 reminderTime = request.reminderTime,
                 reminderEnabled = request.reminderEnabled
             )
-            
+
             // Insert habit
             val habitId = habitRepository.insertHabit(habit)
-            
+
             AddHabitResult(success = true, habitId = habitId)
-            
+
         } catch (e: Exception) {
             AddHabitResult(success = false, error = "Failed to add habit: ${e.message}")
         }

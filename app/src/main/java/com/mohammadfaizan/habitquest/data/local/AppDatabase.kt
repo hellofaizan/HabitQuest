@@ -9,7 +9,7 @@ import androidx.room.TypeConverters
         AppPreferences::class,
         Habit::class,
         HabitCompletion::class
-    ], 
+    ],
     version = 1
 )
 @TypeConverters(Converters::class)

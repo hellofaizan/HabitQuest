@@ -17,17 +17,17 @@ data class GetHabitStatsResult(
 class GetHabitStatsUseCase @Inject constructor(
     private val habitManagementRepository: HabitManagementRepository
 ) {
-    
+
     suspend operator fun invoke(request: GetHabitStatsRequest): GetHabitStatsResult {
         return try {
             val stats = habitManagementRepository.getHabitStats(request.habitId)
             GetHabitStatsResult(success = true, stats = stats)
-            
+
         } catch (e: Exception) {
             GetHabitStatsResult(success = false, error = "Failed to get habit stats: ${e.message}")
         }
     }
-    
+
     // Convenience method
     suspend fun getStats(habitId: Long): GetHabitStatsResult {
         return invoke(GetHabitStatsRequest(habitId = habitId))

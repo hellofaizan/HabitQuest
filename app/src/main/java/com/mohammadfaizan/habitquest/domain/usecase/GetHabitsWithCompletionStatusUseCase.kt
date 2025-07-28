@@ -18,16 +18,19 @@ data class GetHabitsWithCompletionStatusResult(
 class GetHabitsWithCompletionStatusUseCase @Inject constructor(
     private val habitManagementRepository: HabitManagementRepository
 ) {
-    
+
     suspend operator fun invoke(request: GetHabitsWithCompletionStatusRequest): GetHabitsWithCompletionStatusResult {
         return try {
             val dateKey = request.dateKey ?: getCurrentDateKey()
             val habits = habitManagementRepository.getHabitsWithCompletionStatus(dateKey)
-            
+
             GetHabitsWithCompletionStatusResult(success = true, habits = habits)
-            
+
         } catch (e: Exception) {
-            GetHabitsWithCompletionStatusResult(success = false, error = "Failed to get habits with completion status: ${e.message}")
+            GetHabitsWithCompletionStatusResult(
+                success = false,
+                error = "Failed to get habits with completion status: ${e.message}"
+            )
         }
     }
 

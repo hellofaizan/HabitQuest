@@ -15,7 +15,7 @@ data class DeleteHabitResult(
 class DeleteHabitUseCase @Inject constructor(
     private val habitManagementRepository: HabitManagementRepository
 ) {
-    
+
     suspend operator fun invoke(request: DeleteHabitRequest): DeleteHabitResult {
         return try {
             // Check if habit exists
@@ -23,21 +23,21 @@ class DeleteHabitUseCase @Inject constructor(
             if (habit == null) {
                 return DeleteHabitResult(success = false, error = "Habit not found")
             }
-            
+
             // Delete habit and all its completions
             val deleted = habitManagementRepository.deleteHabitAndCompletions(request.habitId)
-            
+
             if (deleted) {
                 DeleteHabitResult(success = true)
             } else {
                 DeleteHabitResult(success = false, error = "Failed to delete habit")
             }
-            
+
         } catch (e: Exception) {
             DeleteHabitResult(success = false, error = "Failed to delete habit: ${e.message}")
         }
     }
-    
+
     // Convenience method
     suspend fun deleteHabit(habitId: Long): DeleteHabitResult {
         return invoke(DeleteHabitRequest(habitId = habitId))
