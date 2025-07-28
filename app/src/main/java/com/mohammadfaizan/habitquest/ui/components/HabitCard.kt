@@ -38,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
@@ -199,12 +200,13 @@ fun ContributionGraph(
 ) {
     val habitColor = Color(habit.color.toColorInt())
     val today = Calendar.getInstance()
-    val graphDays = 70 // Show last 70 days (10 weeks)
+    val graphDays = 182 // GitHub uses 364 days (52 columns × 7 rows)
     
     // Create a map of completion dates for quick lookup
     val completionMap = completions.groupBy { it.dateKey }
     
-    // Generate the last 70 days
+    // Generate the last 364 days in GitHub's pattern
+    // GitHub starts from today and goes backwards
     val days = remember {
         List(graphDays) { dayOffset ->
             val date = Calendar.getInstance().apply {
@@ -217,43 +219,44 @@ fun ContributionGraph(
                 completionCount = dayCompletions.size,
                 targetCount = habit.targetCount
             )
-        }.reversed() // Reverse to show oldest to newest
+        }.reversed() // Reverse to match GitHub's order (newest first)
     }
     
-    // Group days into weeks (7 days per row)
-    val weeks = remember(days) {
-        days.chunked(7)
+    // Create 52 columns × 7 rows grid (GitHub's structure)
+    // Today is at top-right, yesterday is below it in same column
+    // Each column represents a week
+    // Each row represents a day of the week (Sunday to Saturday)
+    val gridData = remember(days) {
+        val columns = 26
+        val rows = 7
+        val grid = Array(rows) { row ->
+            Array(columns) { col ->
+                // Pattern: top-right = today, fill backwards
+                val dayIndex = row + col * rows
+                if (dayIndex < days.size) {
+                    days[dayIndex]
+                } else {
+                    DayData("", 0, habit.targetCount) // Empty day
+                }
+            }
+        }
+        grid
     }
     
     Column(
         modifier = modifier
     ) {
-        // Week labels (optional - can be hidden)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            repeat(7) { weekIndex ->
-                Text(
-                    text = if (weekIndex == 0) "10w" else "",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(4.dp))
-        
-        // Contribution grid
+        // GitHub-style grid: 52 columns × 7 rows
         Column(
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            weeks.forEach { week ->
+            for (row in 0 until 7) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    week.forEach { day ->
+                    // Render each column (week)
+                    for (col in 0 until 26) {
+                        val day = gridData[row][col]
                         ContributionDay(
                             day = day,
                             habitColor = habitColor,
@@ -262,6 +265,55 @@ fun ContributionGraph(
                     }
                 }
             }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Less",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            
+            Spacer(modifier = Modifier.width(4.dp))
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(1.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(RoundedCornerShape(1.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                )
+
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(RoundedCornerShape(1.dp))
+                        .background(habitColor.copy(alpha = 0.3f))
+                )
+
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(RoundedCornerShape(1.dp))
+                        .background(habitColor)
+                )
+            }
+            
+            Spacer(modifier = Modifier.width(4.dp))
+            
+            Text(
+                text = "More",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -280,7 +332,7 @@ fun ContributionDay(
     
     Box(
         modifier = modifier
-            .aspectRatio(1f)
+            .height(10.dp)
             .clip(RoundedCornerShape(2.dp))
             .background(
                 if (day.completionCount > 0) {

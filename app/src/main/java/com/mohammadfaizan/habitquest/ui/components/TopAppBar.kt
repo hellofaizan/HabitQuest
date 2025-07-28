@@ -1,9 +1,13 @@
 package com.mohammadfaizan.habitquest.ui.components
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -15,23 +19,23 @@ import androidx.compose.runtime.Composable
 @Composable
 fun TopAppBarComponent(
     title: String,
-    onSettingsClick: () -> Unit = {},
-    onNotificationClick: () -> Unit = {},
+    onMenuClick: () -> Unit = {},
     onStatsClick: () -> Unit = {},
+    onAddClick: () -> Unit = {},
 ) {
     TopAppBar(
         title = { Text(title) },
         navigationIcon = {
-            IconButton(onClick = onSettingsClick) {
-                Icon(Icons.Default.Settings, contentDescription = "Settings")
+            IconButton(onClick = onMenuClick) {
+                Icon(Icons.Default.Menu, contentDescription = "Menu")
             }
         },
         actions = {
-            IconButton(onClick = onNotificationClick) {
-                Icon(Icons.Default.Notifications, contentDescription = "Notifications")
-            }
             IconButton(onClick = onStatsClick) {
-                Icon(Icons.Default.Check, contentDescription = "Stats")
+                Icon(Icons.Default.Star, contentDescription = "Stats")
+            }
+            IconButton(onClick = onAddClick) {
+                Icon(Icons.Default.AddCircle, contentDescription = "Add Habit")
             }
         }
     )

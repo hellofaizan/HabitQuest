@@ -167,23 +167,20 @@ class MainActivity : ComponentActivity() {
                                     topBar = {
                                         TopAppBarComponent(
                                             title = "Habit Quest",
-                                            onSettingsClick = {
+                                            onMenuClick = {
                                                 Toast.makeText(
-                                                    context, "Settings Clicked",
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
-                                            },
-                                            onNotificationClick = {
-                                                Toast.makeText(
-                                                    context, "Notifications Clicked",
+                                                    context, "Menu Clicked",
                                                     Toast.LENGTH_SHORT
                                                 ).show()
                                             },
                                             onStatsClick = {
                                                 Toast.makeText(
-                                                    context, "Stats Clicked",
+                                                    context, "STats Clicked",
                                                     Toast.LENGTH_SHORT
                                                 ).show()
+                                            },
+                                            onAddClick = {
+                                                showAddHabitScreen = true
                                             }
                                         )
                                     },

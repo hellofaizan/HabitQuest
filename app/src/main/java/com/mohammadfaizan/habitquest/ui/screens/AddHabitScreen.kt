@@ -173,7 +173,7 @@ fun AddHabitScreen(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+            .padding(10.dp)
     ) {
         // Header
         Row(
@@ -187,7 +187,7 @@ fun AddHabitScreen(
                 )
             }
             
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(4.dp))
             
             Text(
                 text = "Create New Habit",
@@ -196,7 +196,7 @@ fun AddHabitScreen(
             )
         }
         
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
         
         // Habit Name (Required)
         InputField(
@@ -221,7 +221,7 @@ fun AddHabitScreen(
             singleLine = false
         )
         
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
         
         // Color Selection
         Text(
@@ -245,7 +245,7 @@ fun AddHabitScreen(
             }
         }
         
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
         
         // Category Selection
         Text(
@@ -269,7 +269,7 @@ fun AddHabitScreen(
             }
         }
         
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
         
         // Frequency Selection
         Text(
@@ -293,7 +293,7 @@ fun AddHabitScreen(
             }
         }
         
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
         
         // Target Count
         Text(
@@ -342,7 +342,7 @@ fun AddHabitScreen(
         
         if (targetCountError != null) {
             Text(
-                text = targetCountError!!,
+                text = targetCountError,
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(start = 16.dp, top = 4.dp)
