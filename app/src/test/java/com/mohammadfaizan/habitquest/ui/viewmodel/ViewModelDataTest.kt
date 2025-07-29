@@ -8,20 +8,18 @@ class ViewModelDataTest {
     @Test
     fun `test HabitUiState data class`() {
         val uiState = HabitUiState(
-            isLoading = true,
             habits = emptyList(),
             habitsWithCompletionStatus = emptyList(),
             error = "Test error",
             selectedHabit = null,
-            isRefreshing = false
+            dataLoaded = true
         )
         
-        assertTrue(uiState.isLoading)
         assertTrue(uiState.habits.isEmpty())
         assertTrue(uiState.habitsWithCompletionStatus.isEmpty())
         assertEquals("Test error", uiState.error)
         assertNull(uiState.selectedHabit)
-        assertFalse(uiState.isRefreshing)
+        assertTrue(uiState.dataLoaded)
     }
     
     @Test

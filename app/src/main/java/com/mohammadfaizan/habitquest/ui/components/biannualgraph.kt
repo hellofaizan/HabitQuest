@@ -30,12 +30,12 @@ fun ContributionGraph(
     modifier: Modifier = Modifier
 ) {
     val habitColor = Color(habit.color.toColorInt())
-    Calendar.getInstance()
-    val graphDays = 182 // 182 days (around 6 months)
-
-    val completionMap = completions.groupBy { it.dateKey }
-
-    val days = remember {
+    val graphDays = 182
+    // Create 182 days of data (around 6 months)
+    val days = remember(habit.id, completions) {
+        val completionMap = completions.groupBy { it.dateKey }
+        val calendar = Calendar.getInstance()
+        
         List(graphDays) { dayOffset ->
             val date = Calendar.getInstance().apply {
                 add(Calendar.DAY_OF_YEAR, -dayOffset)
@@ -47,9 +47,10 @@ fun ContributionGraph(
                 completionCount = dayCompletions.size,
                 targetCount = habit.targetCount
             )
-        }.reversed() // reverse it
+        }.reversed()
     }
 
+    // Create 7x26 grid (7 rows, 26 columns = 182 days)
     val gridData = remember(days) {
         val columns = 26
         val rows = 7
@@ -70,7 +71,7 @@ fun ContributionGraph(
         modifier = modifier
             .padding(horizontal = 5.dp)
     ) {
-        // 26 columns × 7 rows
+        // Render 7x26 grid
         Column(
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
@@ -83,51 +84,12 @@ fun ContributionGraph(
                         ContributionDay(
                             day = day,
                             habitColor = habitColor,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f).height(10.dp)
                         )
                     }
                 }
             }
         }
-
-        /*
-        // Less is more component
-        Spacer(modifier = Modifier.height(8.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Less",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(1.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(RoundedCornerShape(1.dp))
-                        .background(habitColor.copy(alpha = 0.3f))
-                )
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(RoundedCornerShape(1.dp))
-                        .background(habitColor)
-                )
-            }
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = "More",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        */
     }
 }
 
@@ -145,9 +107,8 @@ fun ContributionDay(
 
     Box(
         modifier = modifier
-            .height(10.dp)
             .clip(RoundedCornerShape(2.dp))
-            .border(1.dp, habitColor.copy(alpha = 0.02f), RoundedCornerShape(2.dp))
+            .border(1.dp, habitColor.copy(alpha = 0.03f), RoundedCornerShape(2.dp))
             .background(
                 if (day.completionCount > 0) {
                     habitColor.copy(alpha = alpha)

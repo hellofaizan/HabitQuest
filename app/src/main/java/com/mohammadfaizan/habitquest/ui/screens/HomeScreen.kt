@@ -2,20 +2,17 @@ package com.mohammadfaizan.habitquest.ui.screens
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -42,57 +39,22 @@ fun HomeScreen(
     LaunchedEffect(actions) {
         actions?.let { action ->
             when (action.type) {
-                HabitActionType.ADD_HABIT -> {
-                    // Habit was added, refresh the list
-                    habitViewModel.loadHabits()
-                    habitViewModel.loadHabitsWithCompletionStatus()
-                }
-
                 HabitActionType.COMPLETE_HABIT -> {
-                    // Habit was completed, refresh the list
-                    habitViewModel.loadHabitsWithCompletionStatus()
+                    // Habit was completed, show toast
                     Toast.makeText(context, "Habit completed!", Toast.LENGTH_SHORT).show()
                 }
-
-                HabitActionType.DELETE_HABIT -> {
-                    // Habit was deleted, refresh the list
-                    habitViewModel.loadHabits()
-                    habitViewModel.loadHabitsWithCompletionStatus()
-                }
-
                 else -> {}
             }
             habitViewModel.clearActions()
         }
     }
 
-    // Load habits on first launch
-    LaunchedEffect(Unit) {
-        habitViewModel.loadHabits()
-        habitViewModel.loadHabitsWithCompletionStatus()
-    }
-
     Column(
         modifier = modifier.fillMaxSize()
     ) {
         when {
-            uiState.isLoading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            }
-
-            uiState.habits.isEmpty() -> {
-                EmptyHabitState(
-                    onAddHabit = onAddHabitClick,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-
-            else -> {
+            uiState.habits.isNotEmpty() -> {
+                // Show habits when we have data
                 HabitListContent(
                     habits = uiState.habits,
                     habitsWithCompletionStatus = uiState.habitsWithCompletionStatus,
@@ -101,6 +63,20 @@ fun HomeScreen(
                     onCompleteClick = { habit ->
                         habitViewModel.completeHabit(habit.id)
                     },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+            uiState.dataLoaded -> {
+                // Data has been loaded and there are no habits
+                EmptyHabitState(
+                    onAddHabit = onAddHabitClick,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+            !uiState.dataLoaded -> {
+                // Data hasn't been loaded yet
+                EmptyHabitState(
+                    onAddHabit = onAddHabitClick,
                     modifier = Modifier.fillMaxSize()
                 )
             }

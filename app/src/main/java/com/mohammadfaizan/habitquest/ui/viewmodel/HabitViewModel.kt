@@ -19,15 +19,17 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 data class HabitUiState(
-    val isLoading: Boolean = false,
     val habits: List<Habit> = emptyList(),
     val habitsWithCompletionStatus: List<HabitWithCompletionStatus> = emptyList(),
     val habitCompletions: Map<Long, List<HabitCompletion>> = emptyMap(),
     val error: String? = null,
     val selectedHabit: Habit? = null,
-    val isRefreshing: Boolean = false
+    val dataLoaded: Boolean = false
 )
 
 data class HabitAction(
@@ -60,31 +62,32 @@ class HabitViewModel @Inject constructor(
     private val _actions = MutableStateFlow<HabitAction?>(null)
     val actions: StateFlow<HabitAction?> = _actions.asStateFlow()
 
+    // Cache for habit completions to avoid repeated DB calls
+    private val completionsCache = mutableMapOf<Long, List<HabitCompletion>>()
+
     init {
         loadHabits()
     }
 
     fun loadHabits() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-
             try {
                 val result = getHabitsUseCase.getActiveHabits()
                 if (result.success) {
                     _uiState.value = _uiState.value.copy(
                         habits = result.habits,
-                        isLoading = false
+                        dataLoaded = true
                     )
                 } else {
                     _uiState.value = _uiState.value.copy(
                         error = result.error,
-                        isLoading = false
+                        dataLoaded = true
                     )
                 }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     error = "Failed to load habits: ${e.message}",
-                    isLoading = false
+                    dataLoaded = true
                 )
             }
         }
@@ -92,8 +95,6 @@ class HabitViewModel @Inject constructor(
 
     fun loadHabitsWithCompletionStatus(dateKey: String? = null) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-
             try {
                 val result = if (dateKey != null) {
                     getHabitsWithCompletionStatusUseCase.getHabitsForDate(dateKey)
@@ -103,21 +104,18 @@ class HabitViewModel @Inject constructor(
 
                 if (result.success) {
                     _uiState.value = _uiState.value.copy(
-                        habitsWithCompletionStatus = result.habits,
-                        isLoading = false
+                        habitsWithCompletionStatus = result.habits
                     )
                     // Load completion data for the contribution graph
                     loadHabitCompletions()
                 } else {
                     _uiState.value = _uiState.value.copy(
-                        error = result.error,
-                        isLoading = false
+                        error = result.error
                     )
                 }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
-                    error = "Failed to load habits with completion status: ${e.message}",
-                    isLoading = false
+                    error = "Failed to load habits with completion status: ${e.message}"
                 )
             }
         }
@@ -132,8 +130,6 @@ class HabitViewModel @Inject constructor(
         targetCount: Int = 1
     ) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-
             try {
                 val request = AddHabitRequest(
                     name = name,
@@ -151,14 +147,12 @@ class HabitViewModel @Inject constructor(
                     _actions.value = HabitAction(HabitActionType.ADD_HABIT, result.habitId)
                 } else {
                     _uiState.value = _uiState.value.copy(
-                        error = result.error,
-                        isLoading = false
+                        error = result.error
                     )
                 }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
-                    error = "Failed to add habit: ${e.message}",
-                    isLoading = false
+                    error = "Failed to add habit: ${e.message}"
                 )
             }
         }
@@ -172,11 +166,24 @@ class HabitViewModel @Inject constructor(
                 val result = completeHabitUseCase(request)
 
                 if (result.success) {
-                    println("Habit completion successful: ${result.currentCompletions}/${result.targetCount}, reloading data...")
-                    // Reload habits with completion status
-                    loadHabitsWithCompletionStatus()
-                    // Also reload completion data for the contribution graph
-                    loadHabitCompletions()
+                    println("Habit completion successful: ${result.currentCompletions}/${result.targetCount}")
+
+                    // Update cache instantly
+                    val currentCompletions = completionsCache[habitId] ?: emptyList()
+                    val newCompletion = HabitCompletion(
+                        habitId = habitId,
+                        completedAt = Date(),
+                        notes = notes,
+                        dateKey = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                    )
+                    val updatedCompletions = currentCompletions + newCompletion
+                    completionsCache[habitId] = updatedCompletions
+
+                    // Update UI state instantly without loading
+                    val updatedCompletionsMap = _uiState.value.habitCompletions.toMutableMap()
+                    updatedCompletionsMap[habitId] = updatedCompletions
+                    _uiState.value = _uiState.value.copy(habitCompletions = updatedCompletionsMap)
+
                     _actions.value = HabitAction(HabitActionType.COMPLETE_HABIT, result.newStreak)
                 } else {
                     _uiState.value = _uiState.value.copy(error = result.error)
@@ -191,27 +198,24 @@ class HabitViewModel @Inject constructor(
 
     fun deleteHabit(habitId: Long) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-
             try {
                 val request = DeleteHabitRequest(habitId = habitId)
                 val result = deleteHabitUseCase(request)
 
                 if (result.success) {
-                    // Reload habits after successful deletion
+                    completionsCache.remove(habitId)
+
                     loadHabits()
                     loadHabitsWithCompletionStatus()
                     _actions.value = HabitAction(HabitActionType.DELETE_HABIT, habitId)
                 } else {
                     _uiState.value = _uiState.value.copy(
-                        error = result.error,
-                        isLoading = false
+                        error = result.error
                     )
                 }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
-                    error = "Failed to delete habit: ${e.message}",
-                    isLoading = false
+                    error = "Failed to delete habit: ${e.message}"
                 )
             }
         }
@@ -219,25 +223,20 @@ class HabitViewModel @Inject constructor(
 
     fun searchHabits(query: String) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-
             try {
                 val result = getHabitsUseCase.searchHabits(query)
                 if (result.success) {
                     _uiState.value = _uiState.value.copy(
-                        habits = result.habits,
-                        isLoading = false
+                        habits = result.habits
                     )
                 } else {
                     _uiState.value = _uiState.value.copy(
-                        error = result.error,
-                        isLoading = false
+                        error = result.error
                     )
                 }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
-                    error = "Failed to search habits: ${e.message}",
-                    isLoading = false
+                    error = "Failed to search habits: ${e.message}"
                 )
             }
         }
@@ -245,25 +244,20 @@ class HabitViewModel @Inject constructor(
 
     fun filterHabitsByCategory(category: String) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-
             try {
                 val result = getHabitsUseCase.getHabitsByCategory(category)
                 if (result.success) {
                     _uiState.value = _uiState.value.copy(
-                        habits = result.habits,
-                        isLoading = false
+                        habits = result.habits
                     )
                 } else {
                     _uiState.value = _uiState.value.copy(
-                        error = result.error,
-                        isLoading = false
+                        error = result.error
                     )
                 }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
-                    error = "Failed to filter habits: ${e.message}",
-                    isLoading = false
+                    error = "Failed to filter habits: ${e.message}"
                 )
             }
         }
@@ -275,10 +269,9 @@ class HabitViewModel @Inject constructor(
     }
 
     fun refreshHabits() {
-        _uiState.value = _uiState.value.copy(isRefreshing = true)
+        completionsCache.clear()
         loadHabits()
         loadHabitsWithCompletionStatus()
-        _uiState.value = _uiState.value.copy(isRefreshing = false)
     }
 
     fun clearError() {
@@ -294,20 +287,25 @@ class HabitViewModel @Inject constructor(
             try {
                 val habits = _uiState.value.habits
                 val completionsMap = mutableMapOf<Long, List<HabitCompletion>>()
-
-                println("Loading completions for ${habits.size} habits...")
-
-                habits.forEach { habit ->
-                    val completions =
-                        habitCompletionRepository.getCompletionsForHabit(habit.id).first()
-                    completionsMap[habit.id] = completions
-                    println("Habit ${habit.name}: ${completions.size} completions")
+                val habitIds = habits.map { it.id }
+                if (habitIds.isNotEmpty()) {
+                    val allCompletions = habitCompletionRepository.getCompletionsForHabits(habitIds)
+                    habitIds.forEach { habitId ->
+                        val habitCompletions = allCompletions.filter { it.habitId == habitId }
+                        completionsMap[habitId] = habitCompletions
+                        completionsCache[habitId] = habitCompletions
+                    }
                 }
 
-                _uiState.value = _uiState.value.copy(habitCompletions = completionsMap)
-                println("Updated habitCompletions map with ${completionsMap.size} entries")
+                _uiState.value = _uiState.value.copy(
+                    habitCompletions = completionsMap,
+                    dataLoaded = true
+                )
             } catch (e: Exception) {
-                println("Error loading habit completions: ${e.message}")
+                _uiState.value = _uiState.value.copy(
+                    error = "Failed to load habit completions: ${e.message}",
+                    dataLoaded = true
+                )
             }
         }
     }

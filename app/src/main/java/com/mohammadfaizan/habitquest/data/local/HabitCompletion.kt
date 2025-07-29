@@ -2,6 +2,7 @@ package com.mohammadfaizan.habitquest.data.local
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.util.Date
 
@@ -14,6 +15,10 @@ import java.util.Date
             childColumns = ["habitId"],
             onDelete = ForeignKey.CASCADE
         )
+    ],
+    indices = [
+        Index(value = ["habitId"]),
+        Index(value = ["dateKey"])
     ]
 )
 data class HabitCompletion(

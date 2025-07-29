@@ -90,6 +90,9 @@ interface HabitCompletionDao {
     // Completion patterns
     @Query("SELECT dateKey, COUNT(*) as count FROM habit_completions WHERE habitId = :habitId GROUP BY dateKey ORDER BY dateKey DESC LIMIT :limit")
     fun getCompletionPattern(habitId: Long, limit: Int): Flow<List<CompletionPattern>>
+
+    @Query("SELECT * FROM habit_completions WHERE habitId IN (:habitIds)")
+    suspend fun getCompletionsForHabits(habitIds: List<Long>): List<HabitCompletion>
 }
 
 data class CompletionPattern(

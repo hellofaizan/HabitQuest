@@ -41,6 +41,10 @@ class HabitCompletionRepositoryImpl(
         return habitCompletionDao.getCompletionsInDateRange(habitId, startDate, endDate)
     }
 
+    override suspend fun getCompletionsForHabits(habitIds: List<Long>): List<HabitCompletion> {
+        return habitCompletionDao.getCompletionsForHabits(habitIds)
+    }
+
     // Completion Status
     override suspend fun isHabitCompletedForDate(habitId: Long, dateKey: String): Int {
         return habitCompletionDao.isHabitCompletedForDate(habitId, dateKey)

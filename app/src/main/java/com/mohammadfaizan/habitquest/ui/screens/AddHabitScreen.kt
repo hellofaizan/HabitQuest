@@ -25,8 +25,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -45,6 +48,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -54,15 +59,57 @@ import com.mohammadfaizan.habitquest.ui.components.InputField
 import com.mohammadfaizan.habitquest.ui.components.CategoryChips
 import com.mohammadfaizan.habitquest.ui.components.ColorOption
 import com.mohammadfaizan.habitquest.ui.viewmodel.AddHabitViewModel
+import com.mohammadfaizan.habitquest.data.local.Habit
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.ui.platform.LocalView
+import android.view.ViewTreeObserver
 
 @Composable
 fun AddHabitScreen(
     onBack: () -> Unit,
     onCreateHabit: (name: String, description: String?, color: String, category: String?, frequency: String, targetCount: Int, reminderEnabled: Boolean, reminderTime: String?) -> Unit = { _, _, _, _, _, _, _, _ -> },
+    onUpdateHabit: (Long, name: String, description: String?, color: String, category: String?, frequency: String, targetCount: Int, reminderEnabled: Boolean, reminderTime: String?) -> Unit = { _, _, _, _, _, _, _, _, _ -> },
+    onDeleteHabit: (Long) -> Unit = { },
     modifier: Modifier = Modifier,
-    viewModel: AddHabitViewModel? = null
+    viewModel: AddHabitViewModel? = null,
+    habitToEdit: Habit? = null
 ) {
-    BackHandler(onBack = onBack)
+    val focusManager = LocalFocusManager.current
+    var isKeyboardVisible by remember { mutableStateOf(false) }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val view = LocalView.current
+
+    // Keyboard visibility detection
+    LaunchedEffect(Unit) {
+        val listener = ViewTreeObserver.OnGlobalLayoutListener {
+            val r = android.graphics.Rect()
+            view.getWindowVisibleDisplayFrame(r)
+            val screenHeight = view.rootView.height
+            val keypadHeight = screenHeight - r.bottom
+            isKeyboardVisible = keypadHeight > screenHeight * 0.15
+        }
+        view.viewTreeObserver.addOnGlobalLayoutListener(listener)
+    }
+
+    // Custom back handler that closes keyboard first
+    BackHandler {
+        if (isKeyboardVisible) {
+            focusManager.clearFocus()
+            keyboardController?.hide()
+            isKeyboardVisible = false
+        } else {
+            onBack()
+        }
+    }
+
+
+
+
+
+
+    // Dialog state
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
 
     val formState by viewModel?.formState?.collectAsState() ?: remember { mutableStateOf(null) }
     val validation by viewModel?.validation?.collectAsState() ?: remember { mutableStateOf(null) }
@@ -76,14 +123,14 @@ fun AddHabitScreen(
     var reminderEnabled by remember { mutableStateOf(false) }
     var reminderTime by remember { mutableStateOf("09:00") }
 
-    val currentName = formState?.name ?: name
-    val currentDescription = formState?.description ?: description
-    val currentColor = formState?.color ?: selectedColor
-    val currentCategory = formState?.category ?: selectedCategory
-    val currentFrequency = formState?.frequency ?: selectedFrequency
-    val currentTargetCount = formState?.targetCount ?: targetCount
-    val currentReminderEnabled = formState?.reminderEnabled ?: reminderEnabled
-    val currentReminderTime = formState?.reminderTime ?: reminderTime
+    val currentName = formState?.name ?: (habitToEdit?.name ?: name)
+    val currentDescription = formState?.description ?: (habitToEdit?.description ?: description)
+    val currentColor = formState?.color ?: (habitToEdit?.color ?: selectedColor)
+    val currentCategory = formState?.category ?: (habitToEdit?.category ?: selectedCategory)
+    val currentFrequency = formState?.frequency ?: (habitToEdit?.frequency?.name ?: selectedFrequency)
+    val currentTargetCount = formState?.targetCount ?: (habitToEdit?.targetCount ?: targetCount)
+    val currentReminderEnabled = formState?.reminderEnabled ?: (habitToEdit?.reminderEnabled ?: reminderEnabled)
+    val currentReminderTime = formState?.reminderTime ?: (habitToEdit?.reminderTime ?: reminderTime)
     val isFormValid = validation?.isFormValid ?: true
     val nameError = validation?.isNameValid?.let { if (!it) "Habit name is required" else null }
     val targetCountError =
@@ -177,7 +224,18 @@ fun AddHabitScreen(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onBack) {
+            IconButton(
+                onClick = {
+                    if (isKeyboardVisible) {
+                        focusManager.clearFocus()
+                        keyboardController?.hide()
+                        isKeyboardVisible = false
+                    } else {
+                        onBack()
+                    }
+                }
+            ) {
+
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Go Back"
@@ -187,10 +245,23 @@ fun AddHabitScreen(
             Spacer(modifier = Modifier.width(4.dp))
 
             Text(
-                text = "Create New Habit",
+                text = if (habitToEdit != null) "Edit Habit" else "Create New Habit",
                 style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
             )
+
+            if (habitToEdit != null) {
+                IconButton(
+                    onClick = { showDeleteConfirmation = true }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete Habit",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -386,21 +457,83 @@ fun AddHabitScreen(
 
         Button(
             onClick = {
-                onCreateHabit(
-                    currentName.trim(),
-                    currentDescription.trim().takeIf { it.isNotBlank() },
-                    currentColor,
-                    currentCategory.takeIf { it.isNotBlank() },
-                    currentFrequency,
-                    currentTargetCount,
-                    currentReminderEnabled,
-                    if (currentReminderEnabled) currentReminderTime else null
-                )
+                if (habitToEdit != null) {
+                    onUpdateHabit(
+                        habitToEdit.id,
+                        currentName.trim(),
+                        currentDescription.trim().takeIf { it.isNotBlank() },
+                        currentColor,
+                        currentCategory.takeIf { it.isNotBlank() },
+                        currentFrequency,
+                        currentTargetCount,
+                        currentReminderEnabled,
+                        if (currentReminderEnabled) currentReminderTime else null
+                    )
+                } else {
+                    onCreateHabit(
+                        currentName.trim(),
+                        currentDescription.trim().takeIf { it.isNotBlank() },
+                        currentColor,
+                        currentCategory.takeIf { it.isNotBlank() },
+                        currentFrequency,
+                        currentTargetCount,
+                        currentReminderEnabled,
+                        if (currentReminderEnabled) currentReminderTime else null
+                    )
+                }
             },
             modifier = Modifier.fillMaxWidth(),
             enabled = isFormValid
         ) {
-            Text("Create Habit")
+            Text(if (habitToEdit != null) "Update Habit" else "Create Habit")
         }
+    }
+
+    if (showDeleteConfirmation && habitToEdit != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmation = false },
+            title = {
+                Text(
+                    text = "Delete Habit",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
+            text = {
+                Text(
+                    text = "This action is irreversible. Are you sure you want to delete \"${habitToEdit.name}\"?",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { showDeleteConfirmation = false },
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    )
+                ) {
+                    Text("Cancel")
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onDeleteHabit(habitToEdit.id)
+                        showDeleteConfirmation = false
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    )
+                ) {
+                    Text("Delete")
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }

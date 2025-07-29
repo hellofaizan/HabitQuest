@@ -34,15 +34,25 @@ import com.mohammadfaizan.habitquest.domain.usecase.CompleteHabitUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.DeleteHabitUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.GetHabitsUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.GetHabitsWithCompletionStatusUseCase
+import com.mohammadfaizan.habitquest.domain.usecase.UpdateHabitUseCase
+import com.mohammadfaizan.habitquest.domain.usecase.UpdateHabitResult
 import com.mohammadfaizan.habitquest.ui.components.TopAppBarComponent
 import com.mohammadfaizan.habitquest.ui.screens.AddHabitScreen
 import com.mohammadfaizan.habitquest.ui.screens.HomeScreen
+import com.mohammadfaizan.habitquest.ui.screens.SplashScreen
 import com.mohammadfaizan.habitquest.ui.screens.onbording.OnboardingScreen
 import com.mohammadfaizan.habitquest.ui.theme.HabitQuestTheme
 import com.mohammadfaizan.habitquest.ui.viewmodel.AddHabitActionType
 import com.mohammadfaizan.habitquest.ui.viewmodel.AddHabitViewModel
 import com.mohammadfaizan.habitquest.ui.viewmodel.HabitViewModel
+import com.mohammadfaizan.habitquest.data.local.Habit
 import kotlinx.coroutines.launch
+
+sealed class AppState {
+    object Splash : AppState()
+    object Onboarding : AppState()
+    object Main : AppState()
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -68,6 +78,7 @@ class MainActivity : ComponentActivity() {
                     val habitManagementRepo =
                         remember { HabitManagementRepositoryImpl(habitRepo, habitCompletionRepo) }
                     val addHabitUseCase = remember { AddHabitUseCase(habitRepo) }
+                    val updateHabitUseCase = remember { UpdateHabitUseCase(habitRepo) }
 
                     val addHabitViewModel = remember { AddHabitViewModel(addHabitUseCase) }
                     val habitViewModel = remember {
@@ -81,41 +92,52 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    var hasSeenOnboarding by remember { mutableStateOf<Boolean?>(null) }
+                    var appState by remember { mutableStateOf<AppState>(AppState.Splash) }
                     var showAddHabitScreen by remember { mutableStateOf(false) }
+                    var habitToEdit by remember { mutableStateOf<Habit?>(null) }
                     val scope = rememberCoroutineScope()
 
+                    // Check onboarding status in the background during splash
                     LaunchedEffect(Unit) {
-                        hasSeenOnboarding = preferencesRepo.hasSeenOnboarding()
-                    }
-
-                    when (hasSeenOnboarding) {
-                        null -> {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator()
-                            }
+                        val hasSeenOnboarding = preferencesRepo.hasSeenOnboarding()
+                        appState = if (hasSeenOnboarding) {
+                            AppState.Main
+                        } else {
+                            AppState.Onboarding
                         }
-
-                        false -> {
+                    }
+                    
+                    when (appState) {
+                        AppState.Splash -> {
+                            SplashScreen(
+                                onSplashComplete = {
+                                    // After splash/data load, check onboarding status
+                                    scope.launch {
+                                        val hasSeenOnboarding = preferencesRepo.hasSeenOnboarding()
+                                        appState = if (hasSeenOnboarding) AppState.Main else AppState.Onboarding
+                                    }
+                                },
+                                habitViewModel = habitViewModel,
+                                modifier = Modifier.padding(innerPadding)
+                            )
+                        }
+                        AppState.Onboarding -> {
                             OnboardingScreen(
                                 onContinue = {
                                     scope.launch {
                                         preferencesRepo.setOnboardingSeen()
-                                        hasSeenOnboarding = true
+                                        appState = AppState.Main
                                     }
                                 },
                                 modifier = Modifier.padding(innerPadding)
                             )
                         }
-
-                        else -> {
+                        AppState.Main -> {
                             if (showAddHabitScreen) {
                                 AddHabitScreen(
                                     onBack = {
                                         showAddHabitScreen = false
+                                        habitToEdit = null
                                         addHabitViewModel.resetForm()
                                     },
                                     onCreateHabit = { name, description, color, category, frequency, targetCount, reminderEnabled, reminderTime ->
@@ -124,8 +146,42 @@ class MainActivity : ComponentActivity() {
                                             addHabitViewModel.createHabit()
                                         }
                                     },
+                                    onUpdateHabit = { habitId, name, description, color, category, frequency, targetCount, reminderEnabled, reminderTime ->
+                                        // Update the habit
+                                        scope.launch {
+                                            val result = updateHabitUseCase(
+                                                habitId, name, description, color, category, frequency, targetCount, reminderEnabled, reminderTime
+                                            )
+                                            when (result) {
+                                                is UpdateHabitResult.Success -> {
+                                                    Toast.makeText(context, "Habit updated successfully!", Toast.LENGTH_SHORT).show()
+                                                    showAddHabitScreen = false
+                                                    habitToEdit = null
+                                                    addHabitViewModel.resetForm()
+                                                    // Refresh habit list after update using HabitViewModel
+                                                    // Small delay to ensure database operation completes
+                                                    scope.launch {
+                                                        kotlinx.coroutines.delay(100)
+                                                        habitViewModel.refreshHabits()
+                                                    }
+                                                }
+                                                is UpdateHabitResult.Error -> {
+                                                    Toast.makeText(context, "Error updating habit: ${result.message}", Toast.LENGTH_LONG).show()
+                                                }
+                                            }
+                                        }
+                                    },
+                                    onDeleteHabit = { habitId ->
+                                        // Delete the habit using HabitViewModel
+                                        habitViewModel.deleteHabit(habitId)
+                                        Toast.makeText(context, "Habit deleted successfully!", Toast.LENGTH_SHORT).show()
+                                        showAddHabitScreen = false
+                                        habitToEdit = null
+                                        addHabitViewModel.resetForm()
+                                    },
                                     modifier = Modifier.padding(innerPadding),
-                                    viewModel = addHabitViewModel
+                                    viewModel = addHabitViewModel,
+                                    habitToEdit = habitToEdit
                                 )
 
                                 LaunchedEffect(addHabitViewModel.actions) {
@@ -140,6 +196,10 @@ class MainActivity : ComponentActivity() {
                                                     ).show()
                                                     showAddHabitScreen = false
                                                     addHabitViewModel.resetForm()
+                                                    scope.launch {
+                                                        kotlinx.coroutines.delay(100)
+                                                        habitViewModel.refreshHabits()
+                                                    }
                                                 }
 
                                                 AddHabitActionType.VALIDATION_ERROR -> {
@@ -187,26 +247,14 @@ class MainActivity : ComponentActivity() {
                                             },
                                             onStatsClick = {
                                                 Toast.makeText(
-                                                    context, "STats Clicked",
+                                                    context, "Work in progress",
                                                     Toast.LENGTH_SHORT
                                                 ).show()
-                                            },
+                                    },
                                             onAddClick = {
                                                 showAddHabitScreen = true
                                             }
-                                        )
-                                    },
-                                    floatingActionButton = {
-                                        FloatingActionButton(
-                                            onClick = {
-                                                showAddHabitScreen = true
-                                            }
-                                        ) {
-                                            Icon(
-                                                Icons.Default.Add,
-                                                contentDescription = "Add Habit"
                                             )
-                                        }
                                     },
                                     modifier = Modifier.fillMaxSize()
                                 ) { innerPadding ->
@@ -216,12 +264,17 @@ class MainActivity : ComponentActivity() {
                                             showAddHabitScreen = true
                                         },
                                         onHabitClick = { habit ->
-                                            // Handle habit click - could open detail screen
-                                            Toast.makeText(
-                                                context,
-                                                "Clicked on: ${habit.name}",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
+                                            // Set the habit to edit and populate the form
+                                            habitToEdit = habit
+                                            addHabitViewModel.updateName(habit.name)
+                                            addHabitViewModel.updateDescription(habit.description ?: "")
+                                            addHabitViewModel.updateColor(habit.color)
+                                            addHabitViewModel.updateCategory(habit.category ?: "")
+                                            addHabitViewModel.updateFrequency(habit.frequency.name)
+                                            addHabitViewModel.updateTargetCount(habit.targetCount)
+                                            addHabitViewModel.updateReminderEnabled(habit.reminderEnabled)
+                                            addHabitViewModel.updateReminderTime(habit.reminderTime ?: "09:00")
+                                            showAddHabitScreen = true
                                         },
                                         modifier = Modifier.padding(innerPadding)
                                     )

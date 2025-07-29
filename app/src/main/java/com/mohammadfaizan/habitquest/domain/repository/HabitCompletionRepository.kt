@@ -43,4 +43,6 @@ interface HabitCompletionRepository {
 
     // Patterns and Analytics
     fun getCompletionPattern(habitId: Long, limit: Int): Flow<List<CompletionPattern>>
+
+    suspend fun getCompletionsForHabits(habitIds: List<Long>): List<HabitCompletion>
 } 
