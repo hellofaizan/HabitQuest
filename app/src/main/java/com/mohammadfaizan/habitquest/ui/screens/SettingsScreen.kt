@@ -1,20 +1,41 @@
 package com.mohammadfaizan.habitquest.ui.screens
 
-import com.mohammadfaizan.habitquest.R
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material.icons.rounded.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -25,8 +46,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.core.content.edit
+import androidx.core.net.toUri
 import androidx.core.view.HapticFeedbackConstantsCompat
+import com.mohammadfaizan.habitquest.R
 import com.mohammadfaizan.habitquest.ui.theme.Typography
 import com.mohammadfaizan.habitquest.utils.getAppVersionName
 
@@ -45,6 +68,7 @@ data class MenuSection(
 @Composable
 fun SettingsScreen(
     onBackClick: () -> Unit,
+    onNavigateToGeneral: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -52,40 +76,80 @@ fun SettingsScreen(
     val view = LocalView.current
     val versionName = getAppVersionName(context)
     
+    var showThemeBottomSheet by remember { mutableStateOf(false) }
+    var isDarkTheme by remember { mutableStateOf(false) }
+
+    BackHandler {
+        onBackClick()
+    }
+
     val menuSections = remember {
         listOf(
             // Main Features/Settings Section
             MenuSection(
                 items = listOf(
                     MenuItem(
-                        title = "Settings",
+                        title = "General",
                         icon = { Icon(Icons.Default.Settings, contentDescription = null) }
                     ) {
-                        Toast.makeText(context, "Settings clicked", Toast.LENGTH_SHORT).show()
+                        try {
+                            view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
+                        } catch (e: Exception) {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+                        onNavigateToGeneral()
                     },
                     MenuItem(
                         title = "Theme",
-                        icon = { Icon(painter = painterResource(R.drawable.ic_color), contentDescription = null) }
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_color),
+                                contentDescription = null
+                            )
+                        }
                     ) {
-                        Toast.makeText(context, "Follow on Twitter", Toast.LENGTH_SHORT).show()
+                        try {
+                            view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
+                        } catch (e: Exception) {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+                        showThemeBottomSheet = true
                     },
                     MenuItem(
                         title = "Reorder",
-                        icon = { Icon(painter = painterResource(R.drawable.ic_lines), contentDescription = null) }
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_lines),
+                                contentDescription = null
+                            )
+                        }
                     ) {
-                        Toast.makeText(context, "Follow on Twitter", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Coming soon! Work in progress", Toast.LENGTH_SHORT)
+                            .show()
                     },
                     MenuItem(
                         title = "Analytics",
-                        icon = { Icon(painter = painterResource(R.drawable.ic_chart), contentDescription = null) }
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_chart),
+                                contentDescription = null
+                            )
+                        }
                     ) {
-                        Toast.makeText(context, "Coming soon! Work in progress", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Coming soon! Work in progress", Toast.LENGTH_SHORT)
+                            .show()
                     },
                     MenuItem(
                         title = "Backup and Restore",
-                        icon = { Icon(painter = painterResource(R.drawable.ic_backup), contentDescription = null) }
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_backup),
+                                contentDescription = null
+                            )
+                        }
                     ) {
-                        Toast.makeText(context, "Coming soon! Work in progress", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Coming soon! Work in progress", Toast.LENGTH_SHORT)
+                            .show()
                     },
                 )
             ),
@@ -94,48 +158,136 @@ fun SettingsScreen(
                 items = listOf(
                     MenuItem(
                         title = "App Developer",
-                        icon = { Icon(painter = painterResource(R.drawable.ic_person), contentDescription = null) }
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_person),
+                                contentDescription = null
+                            )
+                        }
                     ) {
-                        Toast.makeText(context, "Win Rewards! clicked", Toast.LENGTH_SHORT).show()
+                        try {
+                            view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
+                        } catch (e: Exception) {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+                        val intent =
+                            Intent(Intent.ACTION_VIEW, "https://mohammadfaizan.com".toUri())
+                        context.startActivity(intent)
                     },
                     MenuItem(
                         title = "Follow on Twitter",
-                        icon = { Icon(painter = painterResource(R.drawable.ic_person), contentDescription = null) }
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_person),
+                                contentDescription = null
+                            )
+                        }
                     ) {
-                        Toast.makeText(context, "Follow on Twitter", Toast.LENGTH_SHORT).show()
+                        try {
+                            view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
+                        } catch (e: Exception) {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+
+                        val twitterAppIntent = Intent(
+                            Intent.ACTION_VIEW,
+                            "twitter://user?screen_name=mofaizandev".toUri()
+                        )
+                        val twitterWebIntent =
+                            Intent(Intent.ACTION_VIEW, "https://twitter.com/mofaizandev".toUri())
+
+                        if (context.packageManager.resolveActivity(
+                                twitterAppIntent,
+                                PackageManager.MATCH_DEFAULT_ONLY
+                            ) != null
+                        ) {
+                            context.startActivity(twitterAppIntent)
+                        } else {
+                            context.startActivity(twitterWebIntent)
+                        }
                     },
                     MenuItem(
                         title = "Follow on Instagram",
-                        icon = { Icon(painter = painterResource(R.drawable.ic_person), contentDescription = null) }
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_person),
+                                contentDescription = null
+                            )
+                        }
                     ) {
-                        Toast.makeText(context, "Win Rewards! clicked", Toast.LENGTH_SHORT).show()
+                        try {
+                            view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
+                        } catch (e: Exception) {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+
+                        val instagramAppIntent = Intent(
+                            Intent.ACTION_VIEW,
+                            "instagram://user?username=hellofaizaan".toUri()
+                        )
+                        val instagramWebIntent =
+                            Intent(Intent.ACTION_VIEW, "https://instagram.com/hellofaizaan".toUri())
+
+                        if (context.packageManager.resolveActivity(
+                                instagramAppIntent,
+                                PackageManager.MATCH_DEFAULT_ONLY
+                            ) != null
+                        ) {
+                            context.startActivity(instagramAppIntent)
+                        } else {
+                            context.startActivity(instagramWebIntent)
+                        }
                     }
                 )
             ),
 
             MenuSection(
                 items = listOf(
-                    MenuItem(
+                    /*MenuItem(
                         title = "Share the App",
                         icon = { Icon(Icons.Default.Share, contentDescription = null) }
                     ) {
-                        Toast.makeText(context, "Send feedback clicked", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Share the app with people", Toast.LENGTH_SHORT).show()
                     },
+
+                     */
                     MenuItem(
                         title = "Give feedback",
-                        icon = { Icon(painter = painterResource(R.drawable.ic_feedback), contentDescription = null) }
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_feedback),
+                                contentDescription = null
+                            )
+                        }
                     ) {
-                        Toast.makeText(context, "Follow on Twitter", Toast.LENGTH_SHORT).show()
+                        try {
+                            view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
+                        } catch (e: Exception) {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+
+                        val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
+                            data = "mailto:faizan@mohammadfaizan.in?subject=Feedback for Habit Quest&body=App Version: $versionName\n\nPlease provide your feedback here:\n".toUri()
+                        }
+
+                        try {
+                            context.startActivity(Intent.createChooser(emailIntent, "Send feedback via email"))
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "No email app found", Toast.LENGTH_SHORT).show()
+                        }
                     },
+                    /*
                     MenuItem(
                         title = "Rate 5 star",
                         icon = { Icon(Icons.Default.Star, contentDescription = null) }
                     ) {
                         Toast.makeText(context, "Follow on Twitter", Toast.LENGTH_SHORT).show()
                     },
+                    
+                     */
                 )
             ),
-            
+
             // Legal/Privacy Section
             MenuSection(
                 items = listOf(
@@ -177,7 +329,6 @@ fun SettingsScreen(
             )
         }
 
-        // Menu Content
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
@@ -191,8 +342,7 @@ fun SettingsScreen(
                     )
                 }
             }
-            
-            // Version text at the bottom
+
             item {
                 Text(
                     text = "Mohammad Faizan  •  Android v$versionName",
@@ -205,6 +355,20 @@ fun SettingsScreen(
                 )
             }
         }
+    }
+
+    if (showThemeBottomSheet) {
+        ThemeBottomSheet(
+            isDarkTheme = isDarkTheme,
+            onThemeChanged = { darkTheme ->
+                isDarkTheme = darkTheme
+                val sharedPrefs = context.getSharedPreferences("app_prefs", 0)
+                sharedPrefs.edit { putBoolean("is_dark_theme", darkTheme) }
+            },
+            onDismiss = {
+                showThemeBottomSheet = false
+            }
+        )
     }
 }
 
@@ -252,10 +416,9 @@ fun MenuItemRow(
         ) {
             menuItem.icon()
         }
-        
+
         Spacer(modifier = Modifier.width(16.dp))
-        
-        // Title
+
         Text(
             text = menuItem.title,
             style = MaterialTheme.typography.bodyLarge,
@@ -263,8 +426,7 @@ fun MenuItemRow(
             fontWeight = FontWeight.Medium,
             modifier = Modifier.weight(1f)
         )
-        
-        // Chevron
+
         Icon(
             Icons.Default.KeyboardArrowRight,
             contentDescription = null,

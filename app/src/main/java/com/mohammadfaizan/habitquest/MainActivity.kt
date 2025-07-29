@@ -35,6 +35,7 @@ import com.mohammadfaizan.habitquest.domain.usecase.UpdateHabitResult
 import com.mohammadfaizan.habitquest.domain.usecase.UpdateHabitUseCase
 import com.mohammadfaizan.habitquest.ui.components.TopAppBarComponent
 import com.mohammadfaizan.habitquest.ui.screens.AddHabitScreen
+import com.mohammadfaizan.habitquest.ui.screens.GeneralSettingsScreen
 import com.mohammadfaizan.habitquest.ui.screens.HomeScreen
 import com.mohammadfaizan.habitquest.ui.screens.SettingsScreen
 import com.mohammadfaizan.habitquest.ui.screens.SplashScreen
@@ -52,6 +53,7 @@ sealed class AppState {
 }
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -92,6 +94,7 @@ class MainActivity : ComponentActivity() {
                     var appState by remember { mutableStateOf<AppState>(AppState.Splash) }
                     var showAddHabitScreen by remember { mutableStateOf(false) }
                     var showSettingsScreen by remember { mutableStateOf(false) }
+                    var showGeneralSettingsScreen by remember { mutableStateOf(false) }
                     var habitToEdit by remember { mutableStateOf<Habit?>(null) }
                     val scope = rememberCoroutineScope()
 
@@ -133,23 +136,49 @@ class MainActivity : ComponentActivity() {
 
                         AppState.Main -> {
                             // Settings Screen
-                            AnimatedVisibility(
-                                visible = showSettingsScreen,
-                                enter = slideInVertically(
-                                    initialOffsetY = { it },
-                                    animationSpec = tween(durationMillis = 200)
-                                ),
-                                exit = slideOutVertically(
-                                    targetOffsetY = { it },
-                                    animationSpec = tween(durationMillis = 200)
-                                )
-                            ) {
-                                SettingsScreen(
-                                    onBackClick = {
-                                        showSettingsScreen = false
-                                    },
-                                    modifier = Modifier.padding(innerPadding)
-                                )
+                            if (showSettingsScreen && !showGeneralSettingsScreen) {
+                                AnimatedVisibility(
+                                    visible = true,
+                                    enter = slideInVertically(
+                                        initialOffsetY = { it },
+                                        animationSpec = tween(durationMillis = 200)
+                                    ),
+                                    exit = slideOutVertically(
+                                        targetOffsetY = { it },
+                                        animationSpec = tween(durationMillis = 200)
+                                    )
+                                ) {
+                                    SettingsScreen(
+                                        onBackClick = {
+                                            showSettingsScreen = false
+                                        },
+                                        onNavigateToGeneral = {
+                                            showGeneralSettingsScreen = true
+                                        },
+                                        modifier = Modifier.padding(innerPadding)
+                                    )
+                                }
+                            }
+
+                            if (showGeneralSettingsScreen) {
+                                AnimatedVisibility(
+                                    visible = true,
+                                    enter = slideInVertically(
+                                        initialOffsetY = { it },
+                                        animationSpec = tween(durationMillis = 200)
+                                    ),
+                                    exit = slideOutVertically(
+                                        targetOffsetY = { it },
+                                        animationSpec = tween(durationMillis = 200)
+                                    )
+                                ) {
+                                    GeneralSettingsScreen(
+                                        onBackClick = {
+                                            showGeneralSettingsScreen = false
+                                        },
+                                        modifier = Modifier.padding(innerPadding)
+                                    )
+                                }
                             }
 
                             // Add Habit Screen
@@ -284,7 +313,7 @@ class MainActivity : ComponentActivity() {
                             }
 
                             // Main content when screens are not shown
-                            if (!showAddHabitScreen && !showSettingsScreen) {
+                            if (!showAddHabitScreen && !showSettingsScreen && !showGeneralSettingsScreen) {
                                 Scaffold(
                                     topBar = {
                                         TopAppBarComponent(
