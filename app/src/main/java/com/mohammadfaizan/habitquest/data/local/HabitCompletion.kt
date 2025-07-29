@@ -29,5 +29,5 @@ data class HabitCompletion(
     val completedAt: Date = Date(),
     val notes: String? = null,
 
-    val dateKey: String // YYYY-MM-DD format for easy querying
+    val dateKey: String // YYYY-MM-DD format
 ) 

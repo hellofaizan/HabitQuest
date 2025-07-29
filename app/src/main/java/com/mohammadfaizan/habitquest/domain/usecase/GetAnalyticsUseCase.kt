@@ -37,10 +37,8 @@ class GetAnalyticsUseCase @Inject constructor(
     suspend operator fun invoke(request: GetAnalyticsRequest): GetAnalyticsResult {
         return try {
             if (request.habitId != null) {
-                // Get analytics for specific habit
                 getHabitAnalyticsInternal(request.habitId, request.weekStart, request.month)
             } else {
-                // Get overall analytics
                 getOverallAnalyticsInternal()
             }
         } catch (e: Exception) {
@@ -80,7 +78,6 @@ class GetAnalyticsUseCase @Inject constructor(
         val totalHabits = habitRepository.getTotalHabitCount()
         val activeHabits = habitRepository.getActiveHabitCount()
 
-        // Get top performing habits
         val topStreakHabits = habitRepository.getTopStreakHabits(5).first()
         val topCompletionHabits = habitRepository.getTopCompletionHabits(5).first()
 
@@ -89,7 +86,6 @@ class GetAnalyticsUseCase @Inject constructor(
             .take(5)
             .map { it.name }
 
-        // Calculate average completion rate (simplified)
         val averageCompletionRate = if (activeHabits > 0) {
             // This would need more complex calculation in a real app
             75.0f // Placeholder
@@ -106,7 +102,6 @@ class GetAnalyticsUseCase @Inject constructor(
         return GetAnalyticsResult(success = true, analytics = analytics)
     }
 
-    // Convenience methods
     suspend fun getHabitAnalytics(habitId: Long): GetAnalyticsResult {
         return invoke(GetAnalyticsRequest(habitId = habitId))
     }

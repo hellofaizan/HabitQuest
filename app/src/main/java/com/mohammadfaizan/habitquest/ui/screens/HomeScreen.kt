@@ -21,6 +21,7 @@ import com.mohammadfaizan.habitquest.data.local.HabitCompletion
 import com.mohammadfaizan.habitquest.domain.repository.HabitWithCompletionStatus
 import com.mohammadfaizan.habitquest.ui.components.EmptyHabitState
 import com.mohammadfaizan.habitquest.ui.components.HabitCard
+import com.mohammadfaizan.habitquest.ui.components.WeeklyCalendarWithData
 import com.mohammadfaizan.habitquest.ui.viewmodel.HabitActionType
 import com.mohammadfaizan.habitquest.ui.viewmodel.HabitViewModel
 
@@ -35,13 +36,11 @@ fun HomeScreen(
     val actions by habitViewModel.actions.collectAsState()
     val context = LocalContext.current
 
-    // Handle ViewModel actions
     LaunchedEffect(actions) {
         actions?.let { action ->
             when (action.type) {
                 HabitActionType.COMPLETE_HABIT -> {
-                    // Habit was completed, show toast
-                    Toast.makeText(context, "Habit completed!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Habit checked!", Toast.LENGTH_SHORT).show()
                 }
                 else -> {}
             }
@@ -54,7 +53,12 @@ fun HomeScreen(
     ) {
         when {
             uiState.habits.isNotEmpty() -> {
-                // Show habits when we have data
+                WeeklyCalendarWithData(
+                    activeHabits = uiState.habits,
+                    habitCompletions = uiState.weeklyCompletions,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
                 HabitListContent(
                     habits = uiState.habits,
                     habitsWithCompletionStatus = uiState.habitsWithCompletionStatus,
@@ -67,14 +71,12 @@ fun HomeScreen(
                 )
             }
             uiState.dataLoaded -> {
-                // Data has been loaded and there are no habits
                 EmptyHabitState(
                     onAddHabit = onAddHabitClick,
                     modifier = Modifier.fillMaxSize()
                 )
             }
             !uiState.dataLoaded -> {
-                // Data hasn't been loaded yet
                 EmptyHabitState(
                     onAddHabit = onAddHabitClick,
                     modifier = Modifier.fillMaxSize()

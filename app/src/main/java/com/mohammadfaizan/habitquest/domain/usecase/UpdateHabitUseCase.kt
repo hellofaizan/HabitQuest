@@ -20,13 +20,11 @@ class UpdateHabitUseCase @Inject constructor(
         reminderTime: String?
     ): UpdateHabitResult {
         return try {
-            // Get the existing habit
             val existingHabit = habitRepository.getHabitById(habitId)
             if (existingHabit == null) {
                 return UpdateHabitResult.Error("Habit not found")
             }
 
-            // Create updated habit
             val updatedHabit = existingHabit.copy(
                 name = name,
                 description = description,
@@ -38,7 +36,6 @@ class UpdateHabitUseCase @Inject constructor(
                 reminderTime = reminderTime
             )
 
-            // Update the habit
             habitRepository.updateHabit(updatedHabit)
             
             UpdateHabitResult.Success(updatedHabit)

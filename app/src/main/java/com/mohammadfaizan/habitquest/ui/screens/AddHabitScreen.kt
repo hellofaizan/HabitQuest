@@ -1,11 +1,8 @@
 package com.mohammadfaizan.habitquest.ui.screens
 
+import android.view.ViewTreeObserver
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -19,12 +16,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.AlertDialog
@@ -35,10 +30,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,24 +41,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.core.graphics.toColorInt
-import com.mohammadfaizan.habitquest.ui.components.InputField
+import androidx.core.view.HapticFeedbackConstantsCompat
+import com.mohammadfaizan.habitquest.data.local.Habit
 import com.mohammadfaizan.habitquest.ui.components.CategoryChips
 import com.mohammadfaizan.habitquest.ui.components.ColorOption
+import com.mohammadfaizan.habitquest.ui.components.InputField
 import com.mohammadfaizan.habitquest.ui.viewmodel.AddHabitViewModel
-import com.mohammadfaizan.habitquest.data.local.Habit
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.ui.platform.LocalView
-import android.view.ViewTreeObserver
 
 @Composable
 fun AddHabitScreen(
@@ -79,8 +71,8 @@ fun AddHabitScreen(
     var isKeyboardVisible by remember { mutableStateOf(false) }
     val keyboardController = LocalSoftwareKeyboardController.current
     val view = LocalView.current
+    val hapticFeedback = LocalHapticFeedback.current
 
-    // Keyboard visibility detection
     LaunchedEffect(Unit) {
         val listener = ViewTreeObserver.OnGlobalLayoutListener {
             val r = android.graphics.Rect()
@@ -92,7 +84,6 @@ fun AddHabitScreen(
         view.viewTreeObserver.addOnGlobalLayoutListener(listener)
     }
 
-    // Custom back handler that closes keyboard first
     BackHandler {
         if (isKeyboardVisible) {
             focusManager.clearFocus()
@@ -103,12 +94,6 @@ fun AddHabitScreen(
         }
     }
 
-
-
-
-
-
-    // Dialog state
     var showDeleteConfirmation by remember { mutableStateOf(false) }
 
     val formState by viewModel?.formState?.collectAsState() ?: remember { mutableStateOf(null) }
@@ -127,9 +112,11 @@ fun AddHabitScreen(
     val currentDescription = formState?.description ?: (habitToEdit?.description ?: description)
     val currentColor = formState?.color ?: (habitToEdit?.color ?: selectedColor)
     val currentCategory = formState?.category ?: (habitToEdit?.category ?: selectedCategory)
-    val currentFrequency = formState?.frequency ?: (habitToEdit?.frequency?.name ?: selectedFrequency)
+    val currentFrequency =
+        formState?.frequency ?: (habitToEdit?.frequency?.name ?: selectedFrequency)
     val currentTargetCount = formState?.targetCount ?: (habitToEdit?.targetCount ?: targetCount)
-    val currentReminderEnabled = formState?.reminderEnabled ?: (habitToEdit?.reminderEnabled ?: reminderEnabled)
+    val currentReminderEnabled =
+        formState?.reminderEnabled ?: (habitToEdit?.reminderEnabled ?: reminderEnabled)
     val currentReminderTime = formState?.reminderTime ?: (habitToEdit?.reminderTime ?: reminderTime)
     val isFormValid = validation?.isFormValid ?: true
     val nameError = validation?.isNameValid?.let { if (!it) "Habit name is required" else null }
@@ -168,7 +155,7 @@ fun AddHabitScreen(
         }
     }
 
-    val updateFrequency = { newFrequency: String ->
+    { newFrequency: String ->
         if (viewModel != null) {
             viewModel.updateFrequency(newFrequency)
         } else {
@@ -211,8 +198,7 @@ fun AddHabitScreen(
         "Mindfulness", "Social", "Finance", "Creative", "Other"
     )
 
-    val availableFrequencies =
-        viewModel?.getAvailableFrequencies() ?: listOf("DAILY", "WEEKLY", "MONTHLY")
+    viewModel?.getAvailableFrequencies() ?: listOf("DAILY", "WEEKLY", "MONTHLY")
 
     Column(
         modifier = modifier
@@ -226,6 +212,11 @@ fun AddHabitScreen(
         ) {
             IconButton(
                 onClick = {
+                    try {
+                        view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
+                    } catch (e: Exception) {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    }
                     if (isKeyboardVisible) {
                         focusManager.clearFocus()
                         keyboardController?.hide()
@@ -253,7 +244,14 @@ fun AddHabitScreen(
 
             if (habitToEdit != null) {
                 IconButton(
-                    onClick = { showDeleteConfirmation = true }
+                    onClick = {
+                        try {
+                            view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
+                        } catch (e: Exception) {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+                        showDeleteConfirmation = true
+                    }
                 ) {
                     Icon(
                         imageVector = Icons.Default.Delete,
@@ -374,7 +372,14 @@ fun AddHabitScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             OutlinedButton(
-                onClick = { if (currentTargetCount > 1) updateTargetCount(currentTargetCount - 1) },
+                onClick = {
+                    try {
+                        view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
+                    } catch (e: Exception) {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    }
+                    if (currentTargetCount > 1) updateTargetCount(currentTargetCount - 1)
+                },
                 modifier = Modifier.size(48.dp)
             ) {
                 Icon(
@@ -395,7 +400,14 @@ fun AddHabitScreen(
             Spacer(modifier = Modifier.width(16.dp))
 
             OutlinedButton(
-                onClick = { updateTargetCount(currentTargetCount + 1) },
+                onClick = {
+                    try {
+                        view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
+                    } catch (e: Exception) {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    }
+                    updateTargetCount(currentTargetCount + 1)
+                },
                 modifier = Modifier.size(48.dp)
             ) {
                 Icon(
@@ -457,6 +469,11 @@ fun AddHabitScreen(
 
         Button(
             onClick = {
+                try {
+                    view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
+                } catch (e: Exception) {
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                }
                 if (habitToEdit != null) {
                     onUpdateHabit(
                         habitToEdit.id,
@@ -509,7 +526,14 @@ fun AddHabitScreen(
             },
             dismissButton = {
                 OutlinedButton(
-                    onClick = { showDeleteConfirmation = false },
+                    onClick = {
+                        try {
+                            view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
+                        } catch (e: Exception) {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+                        showDeleteConfirmation = false
+                    },
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = MaterialTheme.colorScheme.onSurface
                     )
@@ -520,6 +544,11 @@ fun AddHabitScreen(
             confirmButton = {
                 Button(
                     onClick = {
+                        try {
+                            view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
+                        } catch (e: Exception) {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
                         onDeleteHabit(habitToEdit.id)
                         showDeleteConfirmation = false
                     },

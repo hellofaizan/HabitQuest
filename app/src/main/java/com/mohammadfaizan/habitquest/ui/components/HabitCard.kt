@@ -41,6 +41,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.core.view.HapticFeedbackConstantsCompat
 import androidx.core.graphics.toColorInt
 import com.mohammadfaizan.habitquest.data.local.Habit
 import com.mohammadfaizan.habitquest.data.local.HabitCompletion
@@ -57,6 +61,8 @@ fun HabitCard(
     onCompleteClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val hapticFeedback = LocalHapticFeedback.current
+    val view = LocalView.current
     val habitColor = Color(habit.color.toColorInt())
     val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
 
@@ -75,7 +81,14 @@ fun HabitCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable { onHabitClick() },
+            .clickable { 
+                try {
+                    view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
+                } catch (e: Exception) {
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                }
+                onHabitClick() 
+            },
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -152,6 +165,11 @@ fun HabitCard(
                         )
                         .clickable {
                             if (canCompleteMore) {
+                                try {
+                                    view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
+                                } catch (e: Exception) {
+                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                }
                                 onCompleteClick()
                             }
                         },

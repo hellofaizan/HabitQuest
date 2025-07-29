@@ -9,10 +9,6 @@ class HabitRepositoryTest {
     
     @Test
     fun `test habit repository interface contract`() {
-        // This test verifies that the interface defines the expected methods
-        // The actual implementation will be tested with the DAO layer
-        
-        // Create a mock habit to test the data structure
         val habit = Habit(
             name = "Test Habit",
             description = "Test Description",
@@ -20,7 +16,6 @@ class HabitRepositoryTest {
             category = "Health"
         )
         
-        // Verify the habit has the expected properties
         assertEquals("Test Habit", habit.name)
         assertEquals("Test Description", habit.description)
         assertEquals("#FF0000", habit.color)

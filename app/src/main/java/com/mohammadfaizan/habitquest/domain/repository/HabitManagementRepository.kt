@@ -5,7 +5,6 @@ import com.mohammadfaizan.habitquest.data.local.HabitCompletion
 
 interface HabitManagementRepository {
 
-    // Combined operations that work with both habits and completions
     suspend fun completeHabit(habitId: Long, notes: String? = null): Boolean
     suspend fun uncompleteHabit(habitId: Long, dateKey: String): Boolean
     suspend fun getHabitWithCompletions(habitId: Long): HabitWithCompletions?
@@ -13,11 +12,9 @@ interface HabitManagementRepository {
     suspend fun calculateAndUpdateStreak(habitId: Long): Int
     suspend fun getHabitStats(habitId: Long): HabitStats
 
-    // Bulk operations
     suspend fun completeHabitsForDate(habitIds: List<Long>, dateKey: String): Int
     suspend fun deleteHabitAndCompletions(habitId: Long): Boolean
 
-    // Analytics
     suspend fun getWeeklyProgress(habitId: Long, weekStart: String): WeeklyProgress
     suspend fun getMonthlyProgress(habitId: Long, month: String): MonthlyProgress
 }
@@ -37,7 +34,7 @@ data class HabitStats(
     val totalCompletions: Int,
     val currentStreak: Int,
     val longestStreak: Int,
-    val completionRate: Float, // Percentage of days completed
+    val completionRate: Float,
     val averageCompletionsPerDay: Float
 )
 

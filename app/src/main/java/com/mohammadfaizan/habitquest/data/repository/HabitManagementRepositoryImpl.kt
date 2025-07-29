@@ -33,7 +33,6 @@ class HabitManagementRepositoryImpl(
                 return true
             }
 
-            // Create completion
             val completion = HabitCompletion(
                 habitId = habitId,
                 notes = notes,

@@ -262,7 +262,6 @@ class AnalyticsViewModel @Inject constructor(
     }
 
     fun getCurrentMonth(): String {
-        // Helper method to get current month in yyyy-MM format
         val dateFormat = java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.getDefault())
         return dateFormat.format(java.util.Date())
     }

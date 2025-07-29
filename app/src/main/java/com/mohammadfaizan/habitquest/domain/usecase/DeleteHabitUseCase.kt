@@ -38,7 +38,6 @@ class DeleteHabitUseCase @Inject constructor(
         }
     }
 
-    // Convenience method
     suspend fun deleteHabit(habitId: Long): DeleteHabitResult {
         return invoke(DeleteHabitRequest(habitId = habitId))
     }

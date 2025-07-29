@@ -97,7 +97,6 @@ class MainActivity : ComponentActivity() {
                     var habitToEdit by remember { mutableStateOf<Habit?>(null) }
                     val scope = rememberCoroutineScope()
 
-                    // Check onboarding status in the background during splash
                     LaunchedEffect(Unit) {
                         val hasSeenOnboarding = preferencesRepo.hasSeenOnboarding()
                         appState = if (hasSeenOnboarding) {
@@ -111,7 +110,6 @@ class MainActivity : ComponentActivity() {
                         AppState.Splash -> {
                             SplashScreen(
                                 onSplashComplete = {
-                                    // After splash/data load, check onboarding status
                                     scope.launch {
                                         val hasSeenOnboarding = preferencesRepo.hasSeenOnboarding()
                                         appState = if (hasSeenOnboarding) AppState.Main else AppState.Onboarding
@@ -141,13 +139,11 @@ class MainActivity : ComponentActivity() {
                                         addHabitViewModel.resetForm()
                                     },
                                     onCreateHabit = { name, description, color, category, frequency, targetCount, reminderEnabled, reminderTime ->
-                                        // Create the habit using ViewModel
                                         scope.launch {
                                             addHabitViewModel.createHabit()
                                         }
                                     },
                                     onUpdateHabit = { habitId, name, description, color, category, frequency, targetCount, reminderEnabled, reminderTime ->
-                                        // Update the habit
                                         scope.launch {
                                             val result = updateHabitUseCase(
                                                 habitId, name, description, color, category, frequency, targetCount, reminderEnabled, reminderTime
@@ -158,8 +154,6 @@ class MainActivity : ComponentActivity() {
                                                     showAddHabitScreen = false
                                                     habitToEdit = null
                                                     addHabitViewModel.resetForm()
-                                                    // Refresh habit list after update using HabitViewModel
-                                                    // Small delay to ensure database operation completes
                                                     scope.launch {
                                                         kotlinx.coroutines.delay(100)
                                                         habitViewModel.refreshHabits()
@@ -172,7 +166,6 @@ class MainActivity : ComponentActivity() {
                                         }
                                     },
                                     onDeleteHabit = { habitId ->
-                                        // Delete the habit using HabitViewModel
                                         habitViewModel.deleteHabit(habitId)
                                         Toast.makeText(context, "Habit deleted successfully!", Toast.LENGTH_SHORT).show()
                                         showAddHabitScreen = false
@@ -264,7 +257,6 @@ class MainActivity : ComponentActivity() {
                                             showAddHabitScreen = true
                                         },
                                         onHabitClick = { habit ->
-                                            // Set the habit to edit and populate the form
                                             habitToEdit = habit
                                             addHabitViewModel.updateName(habit.name)
                                             addHabitViewModel.updateDescription(habit.description ?: "")

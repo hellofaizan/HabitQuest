@@ -13,6 +13,7 @@ import com.mohammadfaizan.habitquest.domain.usecase.DeleteHabitRequest
 import com.mohammadfaizan.habitquest.domain.usecase.DeleteHabitUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.GetHabitsUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.GetHabitsWithCompletionStatusUseCase
+import com.mohammadfaizan.habitquest.utils.DateUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -27,6 +29,7 @@ data class HabitUiState(
     val habits: List<Habit> = emptyList(),
     val habitsWithCompletionStatus: List<HabitWithCompletionStatus> = emptyList(),
     val habitCompletions: Map<Long, List<HabitCompletion>> = emptyMap(),
+    val weeklyCompletions: Map<String, List<HabitCompletion>> = emptyMap(),
     val error: String? = null,
     val selectedHabit: Habit? = null,
     val dataLoaded: Boolean = false
@@ -62,8 +65,9 @@ class HabitViewModel @Inject constructor(
     private val _actions = MutableStateFlow<HabitAction?>(null)
     val actions: StateFlow<HabitAction?> = _actions.asStateFlow()
 
-    // Cache for habit completions to avoid repeated DB calls
     private val completionsCache = mutableMapOf<Long, List<HabitCompletion>>()
+    
+    private var lastWeekResetTime: Long = 0
 
     init {
         loadHabits()
@@ -78,6 +82,7 @@ class HabitViewModel @Inject constructor(
                         habits = result.habits,
                         dataLoaded = true
                     )
+                    loadWeeklyCompletions()
                 } else {
                     _uiState.value = _uiState.value.copy(
                         error = result.error,
@@ -106,7 +111,6 @@ class HabitViewModel @Inject constructor(
                     _uiState.value = _uiState.value.copy(
                         habitsWithCompletionStatus = result.habits
                     )
-                    // Load completion data for the contribution graph
                     loadHabitCompletions()
                 } else {
                     _uiState.value = _uiState.value.copy(
@@ -142,7 +146,6 @@ class HabitViewModel @Inject constructor(
 
                 val result = addHabitUseCase(request)
                 if (result.success) {
-                    // Reload habits after successful addition
                     loadHabits()
                     _actions.value = HabitAction(HabitActionType.ADD_HABIT, result.habitId)
                 } else {
@@ -168,7 +171,6 @@ class HabitViewModel @Inject constructor(
                 if (result.success) {
                     println("Habit completion successful: ${result.currentCompletions}/${result.targetCount}")
 
-                    // Update cache instantly
                     val currentCompletions = completionsCache[habitId] ?: emptyList()
                     val newCompletion = HabitCompletion(
                         habitId = habitId,
@@ -179,10 +181,11 @@ class HabitViewModel @Inject constructor(
                     val updatedCompletions = currentCompletions + newCompletion
                     completionsCache[habitId] = updatedCompletions
 
-                    // Update UI state instantly without loading
                     val updatedCompletionsMap = _uiState.value.habitCompletions.toMutableMap()
                     updatedCompletionsMap[habitId] = updatedCompletions
                     _uiState.value = _uiState.value.copy(habitCompletions = updatedCompletionsMap)
+
+                    loadWeeklyCompletions()
 
                     _actions.value = HabitAction(HabitActionType.COMPLETE_HABIT, result.newStreak)
                 } else {
@@ -272,6 +275,7 @@ class HabitViewModel @Inject constructor(
         completionsCache.clear()
         loadHabits()
         loadHabitsWithCompletionStatus()
+        loadWeeklyCompletions()
     }
 
     fun clearError() {
@@ -301,12 +305,63 @@ class HabitViewModel @Inject constructor(
                     habitCompletions = completionsMap,
                     dataLoaded = true
                 )
+                
+                loadWeeklyCompletions()
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     error = "Failed to load habit completions: ${e.message}",
                     dataLoaded = true
                 )
             }
+        }
+    }
+    
+    fun loadWeeklyCompletions() {
+        viewModelScope.launch {
+            try {
+                val habits = _uiState.value.habits
+                val weeklyCompletionsMap = mutableMapOf<String, List<HabitCompletion>>()
+                
+                checkAndHandleWeekReset()
+                
+                val calendar = Calendar.getInstance()
+                calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+                
+                val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                val weekDates = mutableListOf<String>()
+                
+                for (i in 0..6) {
+                    val date = calendar.time
+                    weekDates.add(dateFormat.format(date))
+                    calendar.add(Calendar.DAY_OF_YEAR, 1)
+                }
+                
+                val habitIds = habits.map { it.id }
+                if (habitIds.isNotEmpty()) {
+                    val allCompletions = habitCompletionRepository.getCompletionsForHabits(habitIds)
+                    
+                    weekDates.forEach { date ->
+                        val completionsForDate = allCompletions.filter { it.dateKey == date }
+                        weeklyCompletionsMap[date] = completionsForDate
+                    }
+                }
+                
+                _uiState.value = _uiState.value.copy(
+                    weeklyCompletions = weeklyCompletionsMap
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    error = "Failed to load weekly completions: ${e.message}"
+                )
+            }
+        }
+    }
+    
+    private fun checkAndHandleWeekReset() {
+        val currentTime = System.currentTimeMillis()
+        if (DateUtils.isWeekResetTime() && currentTime > lastWeekResetTime + 60000) { // 1 minute cooldown
+            lastWeekResetTime = currentTime
+            loadHabits()
         }
     }
 }

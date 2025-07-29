@@ -55,7 +55,6 @@ class AddHabitUseCaseTest {
     
     @Test
     fun `test validation logic for empty name`() {
-        // Test the validation logic that would be used in the use case
         val emptyName = ""
         val blankName = "   "
         

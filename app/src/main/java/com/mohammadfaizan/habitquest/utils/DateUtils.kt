@@ -9,46 +9,28 @@ object DateUtils {
 
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
-    /**
-     * Get the current date key in YYYY-MM-DD format
-     */
     fun getCurrentDateKey(): String {
         return dateFormat.format(Date())
     }
 
-    /**
-     * Get the date key for a specific date
-     */
     fun getDateKey(date: Date): String {
         return dateFormat.format(date)
     }
 
-    /**
-     * Get the date key for a specific number of days ago
-     */
     fun getDateKeyForDaysAgo(daysAgo: Int): String {
         val calendar = Calendar.getInstance()
         calendar.add(Calendar.DAY_OF_YEAR, -daysAgo)
         return dateFormat.format(calendar.time)
     }
 
-    /**
-     * Check if two date keys represent the same day
-     */
     fun isSameDay(dateKey1: String, dateKey2: String): Boolean {
         return dateKey1 == dateKey2
     }
 
-    /**
-     * Check if a date key represents today
-     */
     fun isToday(dateKey: String): Boolean {
         return dateKey == getCurrentDateKey()
     }
 
-    /**
-     * Get the number of days between two date keys
-     */
     fun getDaysBetween(dateKey1: String, dateKey2: String): Int {
         try {
             val date1 = dateFormat.parse(dateKey1)
@@ -63,34 +45,22 @@ object DateUtils {
         }
     }
 
-    /**
-     * Get the start of the current week (Monday)
-     */
     fun getCurrentWeekStart(): String {
         val calendar = Calendar.getInstance()
         calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
         return dateFormat.format(calendar.time)
     }
 
-    /**
-     * Get the current month in YYYY-MM format
-     */
     fun getCurrentMonth(): String {
         val monthFormat = SimpleDateFormat("yyyy-MM", Locale.getDefault())
         return monthFormat.format(Date())
     }
 
-    /**
-     * Check if it's a new day (useful for midnight reset)
-     */
     fun isNewDay(lastDateKey: String?): Boolean {
         if (lastDateKey == null) return true
         return !isToday(lastDateKey)
     }
 
-    /**
-     * Get the time until midnight in milliseconds
-     */
     fun getTimeUntilMidnight(): Long {
         val calendar = Calendar.getInstance()
         calendar.add(Calendar.DAY_OF_YEAR, 1)
@@ -98,6 +68,30 @@ object DateUtils {
         calendar.set(Calendar.MINUTE, 0)
         calendar.set(Calendar.SECOND, 0)
         calendar.set(Calendar.MILLISECOND, 0)
+        return calendar.timeInMillis - System.currentTimeMillis()
+    }
+    
+    fun isWeekResetTime(): Boolean {
+        val calendar = Calendar.getInstance()
+        val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+        val hour = calendar.get(Calendar.HOUR_OF_DAY)
+        val minute = calendar.get(Calendar.MINUTE)
+        
+        return dayOfWeek == Calendar.SUNDAY && hour == 23 && minute >= 59
+    }
+    
+    fun getTimeUntilWeekReset(): Long {
+        val calendar = Calendar.getInstance()
+        val currentDayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+        
+        val daysUntilSunday = if (currentDayOfWeek == Calendar.SUNDAY) 0 else 7 - currentDayOfWeek
+        
+        calendar.add(Calendar.DAY_OF_YEAR, daysUntilSunday)
+        calendar.set(Calendar.HOUR_OF_DAY, 23)
+        calendar.set(Calendar.MINUTE, 59)
+        calendar.set(Calendar.SECOND, 59)
+        calendar.set(Calendar.MILLISECOND, 999)
+        
         return calendar.timeInMillis - System.currentTimeMillis()
     }
 } 

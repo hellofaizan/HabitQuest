@@ -29,7 +29,6 @@ class AddHabitUseCase @Inject constructor(
 
     suspend operator fun invoke(request: AddHabitRequest): AddHabitResult {
         return try {
-            // Validate input
             if (request.name.isBlank()) {
                 return AddHabitResult(success = false, error = "Habit name cannot be empty")
             }
@@ -41,7 +40,6 @@ class AddHabitUseCase @Inject constructor(
                 )
             }
 
-            // Create habit entity
             val habit = Habit(
                 name = request.name.trim(),
                 description = request.description?.trim(),
@@ -54,7 +52,6 @@ class AddHabitUseCase @Inject constructor(
                 reminderEnabled = request.reminderEnabled
             )
 
-            // Insert habit
             val habitId = habitRepository.insertHabit(habit)
 
             AddHabitResult(success = true, habitId = habitId)

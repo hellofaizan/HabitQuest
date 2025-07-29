@@ -28,7 +28,6 @@ class GetHabitStatsUseCase @Inject constructor(
         }
     }
 
-    // Convenience method
     suspend fun getStats(habitId: Long): GetHabitStatsResult {
         return invoke(GetHabitStatsRequest(habitId = habitId))
     }
