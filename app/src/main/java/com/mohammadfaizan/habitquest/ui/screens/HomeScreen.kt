@@ -58,7 +58,7 @@ fun HomeScreen(
                     habitCompletions = uiState.weeklyCompletions,
                     modifier = Modifier.fillMaxWidth()
                 )
-                
+
                 HabitListContent(
                     habits = uiState.habits,
                     habitsWithCompletionStatus = uiState.habitsWithCompletionStatus,
@@ -70,12 +70,14 @@ fun HomeScreen(
                     modifier = Modifier.fillMaxSize()
                 )
             }
+
             uiState.dataLoaded -> {
                 EmptyHabitState(
                     onAddHabit = onAddHabitClick,
                     modifier = Modifier.fillMaxSize()
                 )
             }
+
             !uiState.dataLoaded -> {
                 EmptyHabitState(
                     onAddHabit = onAddHabitClick,

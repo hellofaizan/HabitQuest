@@ -34,8 +34,8 @@ fun ContributionGraph(
     // Create 182 days of data (around 6 months)
     val days = remember(habit.id, completions) {
         val completionMap = completions.groupBy { it.dateKey }
-        val calendar = Calendar.getInstance()
-        
+        Calendar.getInstance()
+
         List(graphDays) { dayOffset ->
             val date = Calendar.getInstance().apply {
                 add(Calendar.DAY_OF_YEAR, -dayOffset)
@@ -84,7 +84,9 @@ fun ContributionGraph(
                         ContributionDay(
                             day = day,
                             habitColor = habitColor,
-                            modifier = Modifier.weight(1f).height(10.dp)
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(10.dp)
                         )
                     }
                 }

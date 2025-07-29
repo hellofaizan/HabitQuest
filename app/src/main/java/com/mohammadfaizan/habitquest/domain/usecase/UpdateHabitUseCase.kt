@@ -1,8 +1,8 @@
 package com.mohammadfaizan.habitquest.domain.usecase
 
-import com.mohammadfaizan.habitquest.domain.repository.HabitRepository
 import com.mohammadfaizan.habitquest.data.local.Habit
 import com.mohammadfaizan.habitquest.data.local.HabitFrequency
+import com.mohammadfaizan.habitquest.domain.repository.HabitRepository
 import javax.inject.Inject
 
 class UpdateHabitUseCase @Inject constructor(
@@ -37,7 +37,7 @@ class UpdateHabitUseCase @Inject constructor(
             )
 
             habitRepository.updateHabit(updatedHabit)
-            
+
             UpdateHabitResult.Success(updatedHabit)
         } catch (e: Exception) {
             UpdateHabitResult.Error("Failed to update habit: ${e.message}")

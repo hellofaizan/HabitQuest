@@ -1,15 +1,9 @@
 package com.mohammadfaizan.habitquest.ui.screens
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -21,8 +15,8 @@ import com.mohammadfaizan.habitquest.R
 import com.mohammadfaizan.habitquest.ui.theme.Shapes
 import com.mohammadfaizan.habitquest.ui.viewmodel.HabitViewModel
 import kotlinx.coroutines.async
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 
 @Composable
 fun SplashScreen(
@@ -42,7 +36,7 @@ fun SplashScreen(
 
             val minDelay = async { delay(400) }
             minDelay.await()
-            
+
             onSplashComplete()
         }
     }
@@ -54,7 +48,8 @@ fun SplashScreen(
         Image(
             painter = painterResource(R.drawable.applogo),
             contentDescription = null,
-            modifier = Modifier.size(120.dp)
+            modifier = Modifier
+                .size(120.dp)
                 .clip(Shapes.roundedXxl)
         )
     }

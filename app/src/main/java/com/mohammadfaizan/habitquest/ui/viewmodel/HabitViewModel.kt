@@ -17,13 +17,12 @@ import com.mohammadfaizan.habitquest.utils.DateUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import javax.inject.Inject
 
 data class HabitUiState(
     val habits: List<Habit> = emptyList(),
@@ -66,7 +65,7 @@ class HabitViewModel @Inject constructor(
     val actions: StateFlow<HabitAction?> = _actions.asStateFlow()
 
     private val completionsCache = mutableMapOf<Long, List<HabitCompletion>>()
-    
+
     private var lastWeekResetTime: Long = 0
 
     init {
@@ -305,7 +304,7 @@ class HabitViewModel @Inject constructor(
                     habitCompletions = completionsMap,
                     dataLoaded = true
                 )
-                
+
                 loadWeeklyCompletions()
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
@@ -315,37 +314,37 @@ class HabitViewModel @Inject constructor(
             }
         }
     }
-    
+
     fun loadWeeklyCompletions() {
         viewModelScope.launch {
             try {
                 val habits = _uiState.value.habits
                 val weeklyCompletionsMap = mutableMapOf<String, List<HabitCompletion>>()
-                
+
                 checkAndHandleWeekReset()
-                
+
                 val calendar = Calendar.getInstance()
                 calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-                
+
                 val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                 val weekDates = mutableListOf<String>()
-                
+
                 for (i in 0..6) {
                     val date = calendar.time
                     weekDates.add(dateFormat.format(date))
                     calendar.add(Calendar.DAY_OF_YEAR, 1)
                 }
-                
+
                 val habitIds = habits.map { it.id }
                 if (habitIds.isNotEmpty()) {
                     val allCompletions = habitCompletionRepository.getCompletionsForHabits(habitIds)
-                    
+
                     weekDates.forEach { date ->
                         val completionsForDate = allCompletions.filter { it.dateKey == date }
                         weeklyCompletionsMap[date] = completionsForDate
                     }
                 }
-                
+
                 _uiState.value = _uiState.value.copy(
                     weeklyCompletions = weeklyCompletionsMap
                 )
@@ -356,7 +355,7 @@ class HabitViewModel @Inject constructor(
             }
         }
     }
-    
+
     private fun checkAndHandleWeekReset() {
         val currentTime = System.currentTimeMillis()
         if (DateUtils.isWeekResetTime() && currentTime > lastWeekResetTime + 60000) { // 1 minute cooldown
