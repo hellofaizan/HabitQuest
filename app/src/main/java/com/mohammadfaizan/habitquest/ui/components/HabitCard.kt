@@ -1,7 +1,9 @@
 package com.mohammadfaizan.habitquest.ui.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -42,11 +44,12 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HabitCard(
     habit: Habit,
     completions: List<HabitCompletion> = emptyList(),
-    onHabitClick: () -> Unit = {},
+    onHabitLongClick: () -> Unit = {},
     onCompleteClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -71,14 +74,23 @@ fun HabitCard(
         modifier = modifier
             .fillMaxWidth()
             .graphicsLayer(clip = true)
-            .clickable {
-                try {
-                    view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
-                } catch (e: Exception) {
-                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+            .combinedClickable(
+                onClick = {
+                    try {
+                        view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
+                    } catch (e: Exception) {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    }
+                },
+                onLongClick = {
+                    try {
+                        view.performHapticFeedback(HapticFeedbackConstantsCompat.LONG_PRESS)
+                    } catch (e: Exception) {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    }
+                    onHabitLongClick()
                 }
-                onHabitClick()
-            },
+            ),
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface

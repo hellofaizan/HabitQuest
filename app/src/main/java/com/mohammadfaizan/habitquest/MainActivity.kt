@@ -99,10 +99,6 @@ class MainActivity : ComponentActivity() {
                     var habitToEdit by remember { mutableStateOf<Habit?>(null) }
                     val scope = rememberCoroutineScope()
 
-                    // Don't set app state here - let splash screen handle transition
-                    // ViewModel is already created and loading data via Flow
-                    // This allows data to start loading while splash is showing
-
                     when (appState) {
                         AppState.Splash -> {
                             SplashScreen(
@@ -309,6 +305,23 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
 
+                            val openHabitEditor: (Habit) -> Unit = { habit ->
+                                habitToEdit = habit
+                                addHabitViewModel.updateName(habit.name)
+                                addHabitViewModel.updateDescription(
+                                    habit.description ?: ""
+                                )
+                                addHabitViewModel.updateColor(habit.color)
+                                addHabitViewModel.updateCategory(habit.category ?: "")
+                                addHabitViewModel.updateFrequency(habit.frequency.name)
+                                addHabitViewModel.updateTargetCount(habit.targetCount)
+                                addHabitViewModel.updateReminderEnabled(habit.reminderEnabled)
+                                addHabitViewModel.updateReminderTime(
+                                    habit.reminderTime ?: "09:00"
+                                )
+                                showAddHabitScreen = true
+                            }
+
                             // Main content when screens are not shown
                             if (!showAddHabitScreen && !showSettingsScreen && !showGeneralSettingsScreen) {
                                 Scaffold(
@@ -336,22 +349,8 @@ class MainActivity : ComponentActivity() {
                                         onAddHabitClick = {
                                             showAddHabitScreen = true
                                         },
-                                        onHabitClick = { habit ->
-                                            habitToEdit = habit
-                                            addHabitViewModel.updateName(habit.name)
-                                            addHabitViewModel.updateDescription(
-                                                habit.description ?: ""
-                                            )
-                                            addHabitViewModel.updateColor(habit.color)
-                                            addHabitViewModel.updateCategory(habit.category ?: "")
-                                            addHabitViewModel.updateFrequency(habit.frequency.name)
-                                            addHabitViewModel.updateTargetCount(habit.targetCount)
-                                            addHabitViewModel.updateReminderEnabled(habit.reminderEnabled)
-                                            addHabitViewModel.updateReminderTime(
-                                                habit.reminderTime ?: "09:00"
-                                            )
-                                            showAddHabitScreen = true
-                                        },
+                                            onHabitClick = openHabitEditor,
+                                            onHabitLongClick = openHabitEditor,
                                         modifier = Modifier.padding(innerPadding)
                                     )
                                 }

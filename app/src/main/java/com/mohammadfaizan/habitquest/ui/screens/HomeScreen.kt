@@ -30,6 +30,7 @@ fun HomeScreen(
     habitViewModel: HabitViewModel,
     onAddHabitClick: () -> Unit = {},
     onHabitClick: (Habit) -> Unit = {},
+    onHabitLongClick: (Habit) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by habitViewModel.uiState.collectAsState()
@@ -63,7 +64,7 @@ fun HomeScreen(
                     habits = uiState.habits,
                     habitsWithCompletionStatus = uiState.habitsWithCompletionStatus,
                     habitCompletions = uiState.habitCompletions,
-                    onHabitClick = onHabitClick,
+                    onHabitLongClick = onHabitLongClick,
                     onCompleteClick = { habit ->
                         habitViewModel.completeHabit(habit.id)
                     },
@@ -93,7 +94,7 @@ private fun HabitListContent(
     habits: List<Habit>,
     habitsWithCompletionStatus: List<HabitWithCompletionStatus>,
     habitCompletions: Map<Long, List<HabitCompletion>>,
-    onHabitClick: (Habit) -> Unit,
+    onHabitLongClick: (Habit) -> Unit,
     onCompleteClick: (Habit) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -110,7 +111,7 @@ private fun HabitListContent(
             HabitCard(
                 habit = habit,
                 completions = completionsMap[habit.id] ?: emptyList(),
-                onHabitClick = { onHabitClick(habit) },
+                onHabitLongClick = { onHabitLongClick(habit) },
                 onCompleteClick = { onCompleteClick(habit) },
                 modifier = Modifier.fillMaxWidth()
             )
