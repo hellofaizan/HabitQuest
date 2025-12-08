@@ -13,10 +13,14 @@ import com.mohammadfaizan.habitquest.domain.usecase.DeleteHabitRequest
 import com.mohammadfaizan.habitquest.domain.usecase.DeleteHabitUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.GetHabitsUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.GetHabitsWithCompletionStatusUseCase
+import com.mohammadfaizan.habitquest.domain.repository.HabitRepository
 import com.mohammadfaizan.habitquest.utils.DateUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -55,8 +59,18 @@ class HabitViewModel @Inject constructor(
     private val completeHabitUseCase: CompleteHabitUseCase,
     private val deleteHabitUseCase: DeleteHabitUseCase,
     private val getHabitsWithCompletionStatusUseCase: GetHabitsWithCompletionStatusUseCase,
-    private val habitCompletionRepository: com.mohammadfaizan.habitquest.domain.repository.HabitCompletionRepository
+    private val habitCompletionRepository: com.mohammadfaizan.habitquest.domain.repository.HabitCompletionRepository,
+    private val habitRepository: HabitRepository
 ) : ViewModel() {
+
+    // Observe habits Flow directly for instant loading
+    // Use Eagerly to start loading immediately when ViewModel is created
+    private val habitsFlow = habitRepository.getActiveHabits()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly, // Start immediately, don't wait for subscription
+            initialValue = emptyList()
+        )
 
     private val _uiState = MutableStateFlow(HabitUiState())
     val uiState: StateFlow<HabitUiState> = _uiState.asStateFlow()
@@ -69,18 +83,35 @@ class HabitViewModel @Inject constructor(
     private var lastWeekResetTime: Long = 0
 
     init {
-        loadHabits()
+        // Observe habits Flow reactively for instant updates
+        viewModelScope.launch {
+            habitsFlow.collect { habits ->
+                _uiState.value = _uiState.value.copy(
+                    habits = habits,
+                    dataLoaded = true
+                )
+                // Load completions when habits change
+                if (habits.isNotEmpty()) {
+                    loadHabitCompletions()
+                    loadWeeklyCompletions()
+                    // Load completion status reactively when habits are available
+                    loadHabitsWithCompletionStatus()
+                }
+            }
+        }
     }
 
     fun loadHabits() {
+        // This method is kept for backward compatibility but is no longer needed
+        // as habits are now loaded reactively via Flow
+        // However, we still call it for refresh operations
         viewModelScope.launch {
             try {
+                // Force refresh by accessing the flow
+                // The flow will automatically emit updated data
                 val result = getHabitsUseCase.getActiveHabits()
                 if (result.success) {
-                    _uiState.value = _uiState.value.copy(
-                        habits = result.habits,
-                        dataLoaded = true
-                    )
+                    // State is already updated via Flow, just ensure completions are loaded
                     loadWeeklyCompletions()
                 } else {
                     _uiState.value = _uiState.value.copy(
@@ -145,7 +176,7 @@ class HabitViewModel @Inject constructor(
 
                 val result = addHabitUseCase(request)
                 if (result.success) {
-                    loadHabits()
+                    // Habits will update automatically via Flow, no need to call loadHabits()
                     _actions.value = HabitAction(HabitActionType.ADD_HABIT, result.habitId)
                 } else {
                     _uiState.value = _uiState.value.copy(
@@ -207,7 +238,7 @@ class HabitViewModel @Inject constructor(
                 if (result.success) {
                     completionsCache.remove(habitId)
 
-                    loadHabits()
+                    // Habits will update automatically via Flow, no need to call loadHabits()
                     loadHabitsWithCompletionStatus()
                     _actions.value = HabitAction(HabitActionType.DELETE_HABIT, habitId)
                 } else {
@@ -272,7 +303,7 @@ class HabitViewModel @Inject constructor(
 
     fun refreshHabits() {
         completionsCache.clear()
-        loadHabits()
+        // Habits Flow will automatically update, just refresh completions
         loadHabitsWithCompletionStatus()
         loadWeeklyCompletions()
     }
@@ -360,7 +391,8 @@ class HabitViewModel @Inject constructor(
         val currentTime = System.currentTimeMillis()
         if (DateUtils.isWeekResetTime() && currentTime > lastWeekResetTime + 60000) { // 1 minute cooldown
             lastWeekResetTime = currentTime
-            loadHabits()
+            // Habits Flow will automatically update, just refresh completions
+            loadWeeklyCompletions()
         }
     }
 }

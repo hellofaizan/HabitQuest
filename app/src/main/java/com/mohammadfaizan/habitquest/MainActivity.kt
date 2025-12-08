@@ -87,7 +87,8 @@ class MainActivity : ComponentActivity() {
                             CompleteHabitUseCase(habitManagementRepo),
                             DeleteHabitUseCase(habitManagementRepo),
                             GetHabitsWithCompletionStatusUseCase(habitManagementRepo),
-                            habitCompletionRepo
+                            habitCompletionRepo,
+                            habitRepo
                         )
                     }
 
@@ -98,20 +99,16 @@ class MainActivity : ComponentActivity() {
                     var habitToEdit by remember { mutableStateOf<Habit?>(null) }
                     val scope = rememberCoroutineScope()
 
-                    LaunchedEffect(Unit) {
-                        val hasSeenOnboarding = preferencesRepo.hasSeenOnboarding()
-                        appState = if (hasSeenOnboarding) {
-                            AppState.Main
-                        } else {
-                            AppState.Onboarding
-                        }
-                    }
+                    // Don't set app state here - let splash screen handle transition
+                    // ViewModel is already created and loading data via Flow
+                    // This allows data to start loading while splash is showing
 
                     when (appState) {
                         AppState.Splash -> {
                             SplashScreen(
                                 onSplashComplete = {
                                     scope.launch {
+                                        // Transition after splash - data is already loading via Flow
                                         val hasSeenOnboarding = preferencesRepo.hasSeenOnboarding()
                                         appState =
                                             if (hasSeenOnboarding) AppState.Main else AppState.Onboarding

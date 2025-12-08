@@ -27,6 +27,7 @@ object BorderRadius {
     val lg = 12.dp
     val xl = 16.dp
     val xxl = 20.dp
+    val icon = 45.dp
     val full = 9999.dp
 }
 
@@ -46,6 +47,7 @@ object Shapes {
     val roundedLg = RoundedCornerShape(BorderRadius.lg)
     val roundedXl = RoundedCornerShape(BorderRadius.xl)
     val roundedXxl = RoundedCornerShape(BorderRadius.xxl)
+    val roundedSplashIcon = RoundedCornerShape(BorderRadius.icon)
     val roundedFull = RoundedCornerShape(BorderRadius.full)
 }
 

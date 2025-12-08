@@ -25,20 +25,11 @@ fun SplashScreen(
     modifier: Modifier = Modifier
 ) {
     LaunchedEffect(Unit) {
-        coroutineScope {
-            val loadHabits = async { habitViewModel.loadHabits() }
-            val loadCompletions = async { habitViewModel.loadHabitsWithCompletionStatus() }
-
-            loadHabits.await()
-            loadCompletions.await()
-
-            delay(100)
-
-            val minDelay = async { delay(400) }
-            minDelay.await()
-
-            onSplashComplete()
-        }
+        // Don't wait for data loading - habits Flow will load automatically
+        // Just show splash for minimum duration for smooth UX
+        // Data will appear instantly when Main screen loads because Flow is already observing
+        delay(400) // Minimum splash duration
+        onSplashComplete()
     }
 
     Box(
@@ -49,8 +40,8 @@ fun SplashScreen(
             painter = painterResource(R.drawable.applogo),
             contentDescription = null,
             modifier = Modifier
-                .size(120.dp)
-                .clip(Shapes.roundedXxl)
+                .size(170.dp)
+                .clip(Shapes.roundedSplashIcon)
         )
     }
 }
