@@ -69,6 +69,7 @@ data class MenuSection(
 fun SettingsScreen(
     onBackClick: () -> Unit,
     onNavigateToGeneral: () -> Unit,
+    habitViewModel: com.mohammadfaizan.habitquest.ui.viewmodel.HabitViewModel? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -150,6 +151,27 @@ fun SettingsScreen(
                     ) {
                         Toast.makeText(context, "Coming soon! Work in progress", Toast.LENGTH_SHORT)
                             .show()
+                    },
+                    MenuItem(
+                        title = "Fill Graph with Random Data",
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_chart),
+                                contentDescription = null
+                            )
+                        }
+                    ) {
+                        try {
+                            view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
+                        } catch (e: Exception) {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+                        habitViewModel?.generateRandomData(days = 182, completionProbability = 0.7f)
+                        Toast.makeText(
+                            context,
+                            "Generating random data for screenshots...",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     },
                 )
             ),

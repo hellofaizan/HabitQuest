@@ -16,6 +16,9 @@ interface HabitCompletionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCompletion(completion: HabitCompletion): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCompletions(completions: List<HabitCompletion>)
+
     @Update
     suspend fun updateCompletion(completion: HabitCompletion)
 

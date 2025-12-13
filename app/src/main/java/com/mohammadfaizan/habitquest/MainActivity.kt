@@ -29,6 +29,7 @@ import com.mohammadfaizan.habitquest.domain.repository.PreferencesRepositoryImpl
 import com.mohammadfaizan.habitquest.domain.usecase.AddHabitUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.CompleteHabitUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.DeleteHabitUseCase
+import com.mohammadfaizan.habitquest.domain.usecase.GenerateRandomDataUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.GetHabitsUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.GetHabitsWithCompletionStatusUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.UpdateHabitResult
@@ -80,6 +81,7 @@ class MainActivity : ComponentActivity() {
                     val updateHabitUseCase = remember { UpdateHabitUseCase(habitRepo) }
 
                     val addHabitViewModel = remember { AddHabitViewModel(addHabitUseCase) }
+                    val generateRandomDataUseCase = remember { GenerateRandomDataUseCase(habitRepo, habitCompletionRepo) }
                     val habitViewModel = remember {
                         HabitViewModel(
                             addHabitUseCase,
@@ -88,7 +90,8 @@ class MainActivity : ComponentActivity() {
                             DeleteHabitUseCase(habitManagementRepo),
                             GetHabitsWithCompletionStatusUseCase(habitManagementRepo),
                             habitCompletionRepo,
-                            habitRepo
+                            habitRepo,
+                            generateRandomDataUseCase
                         )
                     }
 
@@ -148,6 +151,7 @@ class MainActivity : ComponentActivity() {
                                         onNavigateToGeneral = {
                                             showGeneralSettingsScreen = true
                                         },
+                                        habitViewModel = habitViewModel,
                                         modifier = Modifier.padding(innerPadding)
                                     )
                                 }

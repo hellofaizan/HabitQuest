@@ -45,4 +45,8 @@ interface HabitCompletionRepository {
     fun getCompletionPattern(habitId: Long, limit: Int): Flow<List<CompletionPattern>>
 
     suspend fun getCompletionsForHabits(habitIds: List<Long>): List<HabitCompletion>
+
+    // Random data generation for screenshots/demos
+    suspend fun generateRandomCompletions(habitId: Long, days: Int = 182, completionProbability: Float = 0.7f)
+    suspend fun insertCompletions(completions: List<HabitCompletion>)
 } 

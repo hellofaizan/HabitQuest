@@ -60,7 +60,8 @@ class HabitViewModel @Inject constructor(
     private val deleteHabitUseCase: DeleteHabitUseCase,
     private val getHabitsWithCompletionStatusUseCase: GetHabitsWithCompletionStatusUseCase,
     private val habitCompletionRepository: com.mohammadfaizan.habitquest.domain.repository.HabitCompletionRepository,
-    private val habitRepository: HabitRepository
+    private val habitRepository: HabitRepository,
+    private val generateRandomDataUseCase: com.mohammadfaizan.habitquest.domain.usecase.GenerateRandomDataUseCase
 ) : ViewModel() {
 
     // Observe habits Flow directly for instant loading
@@ -393,6 +394,28 @@ class HabitViewModel @Inject constructor(
             lastWeekResetTime = currentTime
             // Habits Flow will automatically update, just refresh completions
             loadWeeklyCompletions()
+        }
+    }
+
+    fun generateRandomData(days: Int = 182, completionProbability: Float = 0.7f) {
+        viewModelScope.launch {
+            try {
+                val result = generateRandomDataUseCase(days, completionProbability)
+                if (result.success) {
+                    // Refresh all completions and weekly data
+                    loadHabitCompletions()
+                    loadWeeklyCompletions()
+                    loadHabitsWithCompletionStatus()
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        error = result.error ?: "Failed to generate random data"
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    error = "Failed to generate random data: ${e.message}"
+                )
+            }
         }
     }
 }

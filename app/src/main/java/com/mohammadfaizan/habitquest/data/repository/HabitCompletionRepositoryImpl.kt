@@ -5,7 +5,10 @@ import com.mohammadfaizan.habitquest.data.local.HabitCompletion
 import com.mohammadfaizan.habitquest.data.local.HabitCompletionDao
 import com.mohammadfaizan.habitquest.domain.repository.HabitCompletionRepository
 import kotlinx.coroutines.flow.Flow
+import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
+import java.util.Locale
 
 class HabitCompletionRepositoryImpl(
     private val habitCompletionDao: HabitCompletionDao
@@ -98,4 +101,45 @@ class HabitCompletionRepositoryImpl(
     override fun getCompletionPattern(habitId: Long, limit: Int): Flow<List<CompletionPattern>> {
         return habitCompletionDao.getCompletionPattern(habitId, limit)
     }
-} 
+
+    // Random data generation for screenshots/demos
+    override suspend fun generateRandomCompletions(habitId: Long, days: Int, completionProbability: Float) {
+        val random = kotlin.random.Random.Default
+        val completions = mutableListOf<HabitCompletion>()
+        val calendar = Calendar.getInstance()
+        val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+
+        // Generate completions for the past N days
+        for (dayOffset in 0 until days) {
+            calendar.time = Date()
+            calendar.add(Calendar.DAY_OF_YEAR, -dayOffset)
+            val date = calendar.time
+            val dateKey = dateFormat.format(date)
+
+            // Randomly decide if this day should have completions
+            if (random.nextFloat() < completionProbability) {
+                // Random number of completions (1 to targetCount, but we'll use a default of 1-3 for now)
+                // This will be handled by the use case which knows the targetCount
+                completions.add(
+                    HabitCompletion(
+                        habitId = habitId,
+                        completedAt = date,
+                        dateKey = dateKey,
+                        notes = null
+                    )
+                )
+            }
+        }
+
+        // Insert all completions at once
+        if (completions.isNotEmpty()) {
+            habitCompletionDao.insertCompletions(completions)
+        }
+    }
+
+    override suspend fun insertCompletions(completions: List<HabitCompletion>) {
+        if (completions.isNotEmpty()) {
+            habitCompletionDao.insertCompletions(completions)
+        }
+    }
+}
