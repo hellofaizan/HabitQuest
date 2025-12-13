@@ -47,7 +47,19 @@ object DateUtils {
 
     fun getCurrentWeekStart(): String {
         val calendar = Calendar.getInstance()
-        calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+        // Calculate days to subtract to get to Monday
+        // Calendar.DAY_OF_WEEK: Sunday=1, Monday=2, ..., Saturday=7
+        val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+        val daysToSubtract = when (dayOfWeek) {
+            Calendar.SUNDAY -> 6  // Go back 6 days to get Monday
+            Calendar.MONDAY -> 0  // Already Monday
+            else -> dayOfWeek - Calendar.MONDAY  // Subtract to get to Monday
+        }
+        calendar.add(Calendar.DAY_OF_YEAR, -daysToSubtract)
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
         return dateFormat.format(calendar.time)
     }
 

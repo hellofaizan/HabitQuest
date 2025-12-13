@@ -36,6 +36,7 @@ import com.mohammadfaizan.habitquest.domain.usecase.UpdateHabitResult
 import com.mohammadfaizan.habitquest.domain.usecase.UpdateHabitUseCase
 import com.mohammadfaizan.habitquest.ui.components.TopAppBarComponent
 import com.mohammadfaizan.habitquest.ui.screens.AddHabitScreen
+import com.mohammadfaizan.habitquest.utils.StreakResetManager
 import com.mohammadfaizan.habitquest.ui.screens.GeneralSettingsScreen
 import com.mohammadfaizan.habitquest.ui.screens.HomeScreen
 import com.mohammadfaizan.habitquest.ui.screens.SettingsScreen
@@ -91,8 +92,14 @@ class MainActivity : ComponentActivity() {
                             GetHabitsWithCompletionStatusUseCase(habitManagementRepo),
                             habitCompletionRepo,
                             habitRepo,
-                            generateRandomDataUseCase
+                            generateRandomDataUseCase,
+                            habitManagementRepo
                         )
+                    }
+                    
+                    // Schedule midnight streak reset
+                    LaunchedEffect(Unit) {
+                        com.mohammadfaizan.habitquest.utils.StreakResetManager.scheduleMidnightReset(context)
                     }
 
                     var appState by remember { mutableStateOf<AppState>(AppState.Splash) }

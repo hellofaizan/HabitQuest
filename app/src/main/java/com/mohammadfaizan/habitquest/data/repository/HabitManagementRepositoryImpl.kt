@@ -82,7 +82,18 @@ class HabitManagementRepositoryImpl(
 
     override suspend fun calculateAndUpdateStreak(habitId: Long): Int {
         val currentStreak = habitCompletionRepository.getCurrentStreak(habitId)
-        habitRepository.updateStreak(habitId, currentStreak)
+        val habit = habitRepository.getHabitById(habitId)
+        if (habit != null) {
+            // Update current streak and longest streak if current is higher
+            val longestStreak = if (currentStreak > habit.longestStreak) currentStreak else habit.longestStreak
+            val updatedHabit = habit.copy(
+                currentStreak = currentStreak,
+                longestStreak = longestStreak
+            )
+            habitRepository.updateHabit(updatedHabit)
+        } else {
+            habitRepository.updateStreak(habitId, currentStreak)
+        }
         return currentStreak
     }
 
@@ -217,5 +228,18 @@ class HabitManagementRepositoryImpl(
         val dateFormat = SimpleDateFormat("yyyy-MM", Locale.getDefault())
         calendar.time = dateFormat.parse(month) ?: Date()
         return calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
+    }
+    
+    override suspend fun recalculateAllStreaks() {
+        val habits = habitRepository.getActiveHabits().first()
+        habits.forEach { habit ->
+            calculateAndUpdateStreak(habit.id)
+        }
+    }
+    
+    override suspend fun checkAndResetStreaksIfNeeded() {
+        // Check if we need to recalculate streaks (e.g., new day has started)
+        // This should be called on app start or at midnight
+        recalculateAllStreaks()
     }
 }

@@ -57,23 +57,12 @@ interface HabitCompletionDao {
     @Query("SELECT COUNT(*) FROM habit_completions WHERE habitId = :habitId AND dateKey = :dateKey")
     suspend fun getCompletionsForSpecificDate(habitId: Long, dateKey: String): Int
 
-    // Streak calculation
-    @Query(
-        """
-        SELECT COUNT(*) FROM (
-            SELECT dateKey FROM habit_completions 
-            WHERE habitId = :habitId 
-            ORDER BY dateKey DESC
-        ) t1
-        WHERE dateKey >= (
-            SELECT dateKey FROM habit_completions 
-            WHERE habitId = :habitId 
-            ORDER BY dateKey DESC 
-            LIMIT 1
-        )
-    """
-    )
-    suspend fun getCurrentStreak(habitId: Long): Int
+    // Streak calculation - get all unique completion dates
+    @Query("SELECT DISTINCT dateKey FROM habit_completions WHERE habitId = :habitId ORDER BY dateKey DESC")
+    suspend fun getCompletionDates(habitId: Long): List<String>
+    
+    @Query("SELECT COUNT(*) FROM habit_completions WHERE habitId = :habitId AND dateKey = :dateKey")
+    suspend fun hasCompletionForDate(habitId: Long, dateKey: String): Int
 
     // Bulk operations
     @Query("DELETE FROM habit_completions WHERE habitId = :habitId")

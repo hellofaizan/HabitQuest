@@ -57,6 +57,10 @@ fun HomeScreen(
                 WeeklyCalendarWithData(
                     activeHabits = uiState.habits,
                     habitCompletions = uiState.weeklyCompletions,
+                    onWeekChange = { weekOffset ->
+                        // Load data for the selected week
+                        habitViewModel.loadWeeklyCompletions(weekOffset)
+                    },
                     modifier = Modifier.fillMaxWidth()
                 )
 

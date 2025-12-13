@@ -14,6 +14,7 @@ import com.mohammadfaizan.habitquest.domain.usecase.DeleteHabitUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.GetHabitsUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.GetHabitsWithCompletionStatusUseCase
 import com.mohammadfaizan.habitquest.domain.repository.HabitRepository
+import com.mohammadfaizan.habitquest.domain.repository.HabitManagementRepository
 import com.mohammadfaizan.habitquest.utils.DateUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -61,7 +62,8 @@ class HabitViewModel @Inject constructor(
     private val getHabitsWithCompletionStatusUseCase: GetHabitsWithCompletionStatusUseCase,
     private val habitCompletionRepository: com.mohammadfaizan.habitquest.domain.repository.HabitCompletionRepository,
     private val habitRepository: HabitRepository,
-    private val generateRandomDataUseCase: com.mohammadfaizan.habitquest.domain.usecase.GenerateRandomDataUseCase
+    private val generateRandomDataUseCase: com.mohammadfaizan.habitquest.domain.usecase.GenerateRandomDataUseCase,
+    private val habitManagementRepository: HabitManagementRepository
 ) : ViewModel() {
 
     // Observe habits Flow directly for instant loading
@@ -84,6 +86,9 @@ class HabitViewModel @Inject constructor(
     private var lastWeekResetTime: Long = 0
 
     init {
+        // Check and reset streaks on app start
+        checkAndResetStreaks()
+        
         // Observe habits Flow reactively for instant updates
         viewModelScope.launch {
             habitsFlow.collect { habits ->
@@ -98,6 +103,16 @@ class HabitViewModel @Inject constructor(
                     // Load completion status reactively when habits are available
                     loadHabitsWithCompletionStatus()
                 }
+            }
+        }
+    }
+    
+    private fun checkAndResetStreaks() {
+        viewModelScope.launch {
+            try {
+                habitManagementRepository.checkAndResetStreaksIfNeeded()
+            } catch (e: Exception) {
+                // Silently fail, will retry next time
             }
         }
     }
@@ -347,16 +362,33 @@ class HabitViewModel @Inject constructor(
         }
     }
 
-    fun loadWeeklyCompletions() {
+    fun loadWeeklyCompletions(weekOffset: Int = 0) {
         viewModelScope.launch {
             try {
                 val habits = _uiState.value.habits
                 val weeklyCompletionsMap = mutableMapOf<String, List<HabitCompletion>>()
 
-                checkAndHandleWeekReset()
+                if (weekOffset == 0) {
+                    checkAndHandleWeekReset()
+                }
 
                 val calendar = Calendar.getInstance()
-                calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+                // Calculate days to subtract to get to Monday of current week
+                val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+                val daysToSubtract = when (dayOfWeek) {
+                    Calendar.SUNDAY -> 6  // Go back 6 days to get Monday
+                    Calendar.MONDAY -> 0  // Already Monday
+                    else -> dayOfWeek - Calendar.MONDAY  // Subtract to get to Monday
+                }
+                calendar.add(Calendar.DAY_OF_YEAR, -daysToSubtract)
+                
+                // Add week offset (negative = go back in weeks)
+                calendar.add(Calendar.WEEK_OF_YEAR, weekOffset)
+                
+                calendar.set(Calendar.HOUR_OF_DAY, 0)
+                calendar.set(Calendar.MINUTE, 0)
+                calendar.set(Calendar.SECOND, 0)
+                calendar.set(Calendar.MILLISECOND, 0)
 
                 val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                 val weekDates = mutableListOf<String>()
@@ -377,8 +409,12 @@ class HabitViewModel @Inject constructor(
                     }
                 }
 
+                // Merge with existing completions (keep all weeks data)
+                val updatedCompletions = _uiState.value.weeklyCompletions.toMutableMap()
+                updatedCompletions.putAll(weeklyCompletionsMap)
+
                 _uiState.value = _uiState.value.copy(
-                    weeklyCompletions = weeklyCompletionsMap
+                    weeklyCompletions = updatedCompletions
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(

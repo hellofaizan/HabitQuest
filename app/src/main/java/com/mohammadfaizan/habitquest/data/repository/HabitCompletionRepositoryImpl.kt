@@ -76,7 +76,39 @@ class HabitCompletionRepositoryImpl(
 
     // Streak Calculations
     override suspend fun getCurrentStreak(habitId: Long): Int {
-        return habitCompletionDao.getCurrentStreak(habitId)
+        // Get all completion dates sorted descending
+        val completionDates = habitCompletionDao.getCompletionDates(habitId)
+        if (completionDates.isEmpty()) return 0
+        
+        val calendar = Calendar.getInstance()
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        var streak = 0
+        var expectedDate = dateFormat.format(calendar.time) // Today
+        
+        // Check if today is completed, if not start from yesterday
+        val todayCompleted = completionDates.contains(expectedDate)
+        if (!todayCompleted) {
+            calendar.add(Calendar.DAY_OF_YEAR, -1)
+            expectedDate = dateFormat.format(calendar.time)
+        }
+        
+        // Count consecutive days backwards
+        val completionSet = completionDates.toSet()
+        while (completionSet.contains(expectedDate)) {
+            streak++
+            calendar.add(Calendar.DAY_OF_YEAR, -1)
+            expectedDate = dateFormat.format(calendar.time)
+        }
+        
+        return streak
+    }
+    
+    override suspend fun getCompletionDates(habitId: Long): List<String> {
+        return habitCompletionDao.getCompletionDates(habitId)
+    }
+    
+    override suspend fun hasCompletionForDate(habitId: Long, dateKey: String): Boolean {
+        return habitCompletionDao.hasCompletionForDate(habitId, dateKey) > 0
     }
 
     // Bulk Operations

@@ -1,8 +1,14 @@
 package com.mohammadfaizan.habitquest.ui.components
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,16 +21,21 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -197,14 +208,19 @@ fun DayProgressCircle(
 fun WeeklyCalendarWithData(
     modifier: Modifier = Modifier,
     activeHabits: List<com.mohammadfaizan.habitquest.data.local.Habit>,
-    habitCompletions: Map<String, List<com.mohammadfaizan.habitquest.data.local.HabitCompletion>>
+    habitCompletions: Map<String, List<com.mohammadfaizan.habitquest.data.local.HabitCompletion>>,
+    onWeekChange: ((Int) -> Unit)? = null  // Callback when week changes (offset: -1 = previous week)
 ) {
-    val currentWeekDays = remember {
-        generateCurrentWeekDays()
+    var weekOffset by remember { mutableStateOf(0) } // 0 = current week, -1 = previous week, etc.
+    var dragOffset by remember { mutableStateOf(0f) }
+    var isDragging by remember { mutableStateOf(false) }
+
+    val weekDays = remember(weekOffset) {
+        generateWeekDays(weekOffset)
     }
 
-    val dayProgressList = remember(activeHabits, habitCompletions) {
-        currentWeekDays.map { date ->
+    val dayProgressList = remember(activeHabits, habitCompletions, weekDays) {
+        weekDays.map { date ->
             val completionsForDay = habitCompletions[date] ?: emptyList()
             val totalHabitsForDay = activeHabits.sumOf { habit ->
                 // Count each habit based on its frequency/target count
@@ -218,20 +234,129 @@ fun WeeklyCalendarWithData(
                 dayNumber = getDayNumber(date),
                 completedHabits = completedHabitsForDay,
                 totalHabits = totalHabitsForDay,
-                isToday = DateUtils.isToday(date)
+                isToday = DateUtils.isToday(date) && weekOffset == 0
             )
         }
     }
 
-    WeeklyCalendar(
-        modifier = modifier,
-        dayProgressList = dayProgressList
+    // Animate the calendar when week changes
+    val animatedAlpha by animateFloatAsState(
+        targetValue = if (isDragging) 0.7f else 1f,
+        animationSpec = tween(durationMillis = 200),
+        label = "calendar_alpha"
     )
+
+    Column(modifier = modifier) {
+        // Show "Back to current week" button when viewing old data
+        if (weekOffset < 0) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Button(
+                    onClick = {
+                        weekOffset = 0
+                        onWeekChange?.invoke(0)
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "← Back to Current Week",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures(
+                        onDragEnd = {
+                            // Check if drag was significant enough to change week
+                            if (dragOffset > 150f) {
+                                // Swiped right - go to previous week (older data)
+                                val newOffset = weekOffset - 1
+                                weekOffset = newOffset
+                                onWeekChange?.invoke(newOffset)
+                            } else if (dragOffset < -150f && weekOffset < 0) {
+                                // Swiped left - go forward (toward current week)
+                                val newOffset = (weekOffset + 1).coerceAtMost(0)
+                                weekOffset = newOffset
+                                onWeekChange?.invoke(newOffset)
+                            }
+                            dragOffset = 0f
+                            isDragging = false
+                        },
+                        onHorizontalDrag = { change: PointerInputChange, dragAmount: Float ->
+                            isDragging = true
+                            dragOffset += dragAmount
+                            change.consume()
+                        }
+                    )
+                }
+        ) {
+            AnimatedContent(
+                targetState = weekOffset,
+                transitionSpec = {
+                    if (targetState < initialState) {
+                        // Going to previous week (right swipe) - new slides in from left, old slides out to right (left to right animation)
+                        slideInHorizontally(
+                            initialOffsetX = { -it },
+                            animationSpec = tween(durationMillis = 300)
+                        ) togetherWith slideOutHorizontally(
+                            targetOffsetX = { it },
+                            animationSpec = tween(durationMillis = 300)
+                        )
+                    } else {
+                        // Going forward to current week (left swipe) - new slides in from right, old slides out to left (right to left animation)
+                        slideInHorizontally(
+                            initialOffsetX = { it },
+                            animationSpec = tween(durationMillis = 300)
+                        ) togetherWith slideOutHorizontally(
+                            targetOffsetX = { -it },
+                            animationSpec = tween(durationMillis = 300)
+                        )
+                    }
+                },
+                label = "week_transition"
+            ) { _ ->
+                WeeklyCalendar(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .alpha(animatedAlpha),
+                    dayProgressList = dayProgressList
+                )
+            }
+        }
+    }
 }
 
 private fun generateCurrentWeekDays(): List<String> {
+    return generateWeekDays(0)
+}
+
+private fun generateWeekDays(weekOffset: Int): List<String> {
     val calendar = Calendar.getInstance()
-    calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+    // Calculate days to subtract to get to Monday of current week
+    val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+    val daysToSubtract = when (dayOfWeek) {
+        Calendar.SUNDAY -> 6  // Go back 6 days to get Monday
+        Calendar.MONDAY -> 0  // Already Monday
+        else -> dayOfWeek - Calendar.MONDAY  // Subtract to get to Monday
+    }
+    calendar.add(Calendar.DAY_OF_YEAR, -daysToSubtract)
+    
+    // Add week offset (negative = go back in weeks)
+    calendar.add(Calendar.WEEK_OF_YEAR, weekOffset)
+    
+    calendar.set(Calendar.HOUR_OF_DAY, 0)
+    calendar.set(Calendar.MINUTE, 0)
+    calendar.set(Calendar.SECOND, 0)
+    calendar.set(Calendar.MILLISECOND, 0)
 
     val weekDays = mutableListOf<String>()
     val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())

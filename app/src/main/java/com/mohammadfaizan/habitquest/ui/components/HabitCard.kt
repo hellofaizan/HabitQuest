@@ -154,6 +154,39 @@ fun HabitCard(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
+                // Display streaks - positioned to the left of the completion button
+                if (habit.currentStreak > 0 || habit.longestStreak > 0) {
+                    Column(
+                        horizontalAlignment = Alignment.End,
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
+                        if (habit.currentStreak > 0) {
+                            Text(
+                                text = "🔥 ${habit.currentStreak}",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            if (habit.longestStreak > habit.currentStreak) {
+                                Text(
+                                    text = "Best: ${habit.longestStreak}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = MaterialTheme.typography.bodySmall.fontSize * 0.85f
+                                )
+                            }
+                        } else if (habit.longestStreak > 0) {
+                            Text(
+                                text = "Best: ${habit.longestStreak}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
                 Box(
                     modifier = Modifier
                         .size(40.dp)

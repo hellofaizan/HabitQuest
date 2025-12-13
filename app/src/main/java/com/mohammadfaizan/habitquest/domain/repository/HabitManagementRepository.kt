@@ -17,6 +17,10 @@ interface HabitManagementRepository {
 
     suspend fun getWeeklyProgress(habitId: Long, weekStart: String): WeeklyProgress
     suspend fun getMonthlyProgress(habitId: Long, month: String): MonthlyProgress
+    
+    // Streak management
+    suspend fun recalculateAllStreaks()
+    suspend fun checkAndResetStreaksIfNeeded()
 }
 
 data class HabitWithCompletions(

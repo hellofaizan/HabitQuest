@@ -32,6 +32,8 @@ interface HabitCompletionRepository {
 
     // Streak Calculations
     suspend fun getCurrentStreak(habitId: Long): Int
+    suspend fun getCompletionDates(habitId: Long): List<String>
+    suspend fun hasCompletionForDate(habitId: Long, dateKey: String): Boolean
 
     // Bulk Operations
     suspend fun deleteAllCompletionsForHabit(habitId: Long)
