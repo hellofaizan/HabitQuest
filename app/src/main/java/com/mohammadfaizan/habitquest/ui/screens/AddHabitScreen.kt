@@ -1,7 +1,10 @@
 package com.mohammadfaizan.habitquest.ui.screens
 
+import android.Manifest
 import android.view.ViewTreeObserver
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -42,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -56,6 +60,7 @@ import com.mohammadfaizan.habitquest.ui.components.CategoryChips
 import com.mohammadfaizan.habitquest.ui.components.ColorOption
 import com.mohammadfaizan.habitquest.ui.components.InputField
 import com.mohammadfaizan.habitquest.ui.viewmodel.AddHabitViewModel
+import com.mohammadfaizan.habitquest.utils.PermissionUtils
 
 @Composable
 fun AddHabitScreen(
@@ -72,6 +77,7 @@ fun AddHabitScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     val view = LocalView.current
     val hapticFeedback = LocalHapticFeedback.current
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         val listener = ViewTreeObserver.OnGlobalLayoutListener {
@@ -171,11 +177,42 @@ fun AddHabitScreen(
         }
     }
 
+    // Permission launcher for notification permission
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (!isGranted) {
+            // If permission denied, disable reminder
+            if (viewModel != null) {
+                viewModel.updateReminderEnabled(false)
+            } else {
+                reminderEnabled = false
+            }
+        }
+    }
+
     val updateReminderEnabled = { enabled: Boolean ->
-        if (viewModel != null) {
-            viewModel.updateReminderEnabled(enabled)
+        if (enabled) {
+            // User is trying to enable reminder - check permission first
+            if (PermissionUtils.isNotificationPermissionRequired() && 
+                !PermissionUtils.hasNotificationPermission(context)) {
+                // Request permission
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else {
+                // Permission already granted or not required, enable reminder
+                if (viewModel != null) {
+                    viewModel.updateReminderEnabled(true)
+                } else {
+                    reminderEnabled = true
+                }
+            }
         } else {
-            reminderEnabled = enabled
+            // User is disabling reminder - no permission check needed
+            if (viewModel != null) {
+                viewModel.updateReminderEnabled(false)
+            } else {
+                reminderEnabled = false
+            }
         }
     }
 

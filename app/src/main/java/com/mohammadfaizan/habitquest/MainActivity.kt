@@ -36,6 +36,8 @@ import com.mohammadfaizan.habitquest.domain.usecase.UpdateHabitResult
 import com.mohammadfaizan.habitquest.domain.usecase.UpdateHabitUseCase
 import com.mohammadfaizan.habitquest.ui.components.TopAppBarComponent
 import com.mohammadfaizan.habitquest.ui.screens.AddHabitScreen
+import com.mohammadfaizan.habitquest.utils.HabitNotificationManager
+import com.mohammadfaizan.habitquest.utils.NotificationScheduler
 import com.mohammadfaizan.habitquest.utils.StreakResetManager
 import com.mohammadfaizan.habitquest.ui.screens.GeneralSettingsScreen
 import com.mohammadfaizan.habitquest.ui.screens.HomeScreen
@@ -46,6 +48,7 @@ import com.mohammadfaizan.habitquest.ui.theme.HabitQuestTheme
 import com.mohammadfaizan.habitquest.ui.viewmodel.AddHabitActionType
 import com.mohammadfaizan.habitquest.ui.viewmodel.AddHabitViewModel
 import com.mohammadfaizan.habitquest.ui.viewmodel.HabitViewModel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 sealed class AppState {
@@ -97,9 +100,17 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     
-                    // Schedule midnight streak reset
+                    // Initialize notification channel
+                    LaunchedEffect(Unit) {
+                        HabitNotificationManager.createNotificationChannel(context)
+                    }
+                    
+                    // Schedule midnight streak reset and reschedule all habit reminders
                     LaunchedEffect(Unit) {
                         com.mohammadfaizan.habitquest.utils.StreakResetManager.scheduleMidnightReset(context)
+                        // Reschedule all habit reminders on app startup
+                        val allHabits = habitRepo.getAllHabits().first()
+                        NotificationScheduler.rescheduleAllReminders(context, allHabits)
                     }
 
                     var appState by remember { mutableStateOf<AppState>(AppState.Splash) }
@@ -234,6 +245,13 @@ class MainActivity : ComponentActivity() {
                                                     scope.launch {
                                                         kotlinx.coroutines.delay(100)
                                                         habitViewModel.refreshHabits()
+                                                        // Reschedule notification for the updated habit
+                                                        val updatedHabit = result.habit
+                                                        if (updatedHabit.reminderEnabled) {
+                                                            NotificationScheduler.scheduleHabitReminder(context, updatedHabit)
+                                                        } else {
+                                                            NotificationScheduler.cancelHabitReminder(context, updatedHabit.id)
+                                                        }
                                                     }
                                                 }
 
@@ -248,6 +266,8 @@ class MainActivity : ComponentActivity() {
                                         }
                                     },
                                     onDeleteHabit = { habitId ->
+                                        // Cancel notification before deleting
+                                        NotificationScheduler.cancelHabitReminder(context, habitId)
                                         habitViewModel.deleteHabit(habitId)
                                         Toast.makeText(
                                             context,
@@ -280,6 +300,14 @@ class MainActivity : ComponentActivity() {
                                                 scope.launch {
                                                     kotlinx.coroutines.delay(100)
                                                     habitViewModel.refreshHabits()
+                                                    // Schedule notification for the newly created habit
+                                                    val habitId = it.data as? Long
+                                                    if (habitId != null) {
+                                                        val habit = habitRepo.getHabitById(habitId)
+                                                        if (habit != null && habit.reminderEnabled) {
+                                                            NotificationScheduler.scheduleHabitReminder(context, habit)
+                                                        }
+                                                    }
                                                 }
                                             }
 

@@ -1,5 +1,8 @@
 package com.mohammadfaizan.habitquest.ui.screens.onbording
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -19,6 +22,8 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,6 +37,7 @@ import com.mohammadfaizan.habitquest.R
 import com.mohammadfaizan.habitquest.ui.theme.Shapes
 import com.mohammadfaizan.habitquest.ui.theme.Spacing
 import com.mohammadfaizan.habitquest.ui.theme.Typography
+import com.mohammadfaizan.habitquest.utils.PermissionUtils
 import com.mohammadfaizan.habitquest.utils.getAppVersionName
 
 @Composable
@@ -41,6 +47,26 @@ fun OnboardingScreen(
 ) {
     val context = LocalContext.current
     val versionName = getAppVersionName(context)
+    
+    // Request notification permission on first launch when user clicks Continue
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        // Continue to main screen regardless of permission result
+        onContinue()
+    }
+    
+    // Handler for Continue button click
+    val handleContinue = {
+        if (PermissionUtils.isNotificationPermissionRequired() && 
+            !PermissionUtils.hasNotificationPermission(context)) {
+            // Request permission on first launch
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            // For older Android versions or if already granted, continue immediately
+            onContinue()
+        }
+    }
 
     Box(
         modifier = modifier
@@ -101,7 +127,7 @@ fun OnboardingScreen(
                     verticalArrangement = Arrangement.spacedBy(Spacing.md)
                 ) {
                     Card(
-                        onClick = onContinue,
+                        onClick = handleContinue,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),

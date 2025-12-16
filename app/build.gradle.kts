@@ -75,4 +75,7 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.svg)
 
+    // WorkManager for background tasks and notifications
+    implementation(libs.androidx.work.runtime.ktx)
+
 }
