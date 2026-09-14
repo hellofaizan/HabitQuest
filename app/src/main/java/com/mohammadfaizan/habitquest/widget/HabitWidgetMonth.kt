@@ -2,9 +2,15 @@ package com.mohammadfaizan.habitquest.widget
 
 import android.content.Context
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
+import androidx.datastore.preferences.core.Preferences
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.action.ActionParameters
@@ -15,8 +21,8 @@ import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.provideContent
-import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.background
+import androidx.glance.currentState
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
@@ -28,6 +34,7 @@ import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.size
 import androidx.glance.layout.width
+import androidx.glance.state.GlanceStateDefinition
 import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
@@ -41,12 +48,20 @@ private val MonthWidgetMutedCell = Color(0xFF3A3A3C)
 
 class HabitWidgetMonth : GlanceAppWidget() {
 
-    override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val prefs = getAppWidgetState(context, PreferencesGlanceStateDefinition, id)
-        val habitId = prefs[WidgetPrefs.HABIT_ID]
-        val data = habitId?.let { loadHabitWidgetData(context, it, days = MONTH_WIDGET_DAYS) }
+    // See HabitWidget3Day for why this is read reactively via currentState() instead of
+    // fetched once up front.
+    override val stateDefinition: GlanceStateDefinition<*> = PreferencesGlanceStateDefinition
 
+    override suspend fun provideGlance(context: Context, id: GlanceId) {
         provideContent {
+            val prefs = currentState<Preferences>()
+            val habitId = prefs[WidgetPrefs.HABIT_ID]
+
+            var data by remember { mutableStateOf<HabitWidgetData?>(null) }
+            LaunchedEffect(habitId) {
+                data = habitId?.let { loadHabitWidgetData(context, it, days = MONTH_WIDGET_DAYS) }
+            }
+
             HabitWidgetMonthContent(data)
         }
     }
