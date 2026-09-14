@@ -70,6 +70,7 @@ fun SettingsDrawerContent(
     onNavigateToReorder: () -> Unit = {},
     onNavigateToAnalytics: () -> Unit = {},
     onNavigateToCalendarOverview: () -> Unit = {},
+    onNavigateToReports: () -> Unit = {},
     onNavigateToArchived: () -> Unit = {},
     onNavigateToBackupRestore: () -> Unit = {},
     habitViewModel: com.mohammadfaizan.habitquest.ui.viewmodel.HabitViewModel? = null,
@@ -157,6 +158,22 @@ fun SettingsDrawerContent(
                             hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                         }
                         onNavigateToCalendarOverview()
+                    },
+                    MenuItem(
+                        title = "Reports",
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_chart),
+                                contentDescription = null
+                            )
+                        }
+                    ) {
+                        try {
+                            view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
+                        } catch (e: Exception) {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+                        onNavigateToReports()
                     },
                     MenuItem(
                         title = "Archived Habits",
