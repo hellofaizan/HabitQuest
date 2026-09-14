@@ -162,14 +162,29 @@ fun HabitCard(
                         color = MaterialTheme.colorScheme.onSurface
                     )
 
-                    if (habit.description?.isNotBlank() == true) {
-                        Text(
-                            text = habit.description,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                    when {
+                        // Once checked, the note takes the description's place — it's the
+                        // more relevant line at that point, and keeps the card from growing
+                        // a second row just to hold it.
+                        isCompletedToday -> {
+                            Text(
+                                text = if (todayNote.isNullOrBlank()) "📝 Add a note" else "📝 $todayNote",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.clickable { showNoteDialog = true }
+                            )
+                        }
+                        habit.description?.isNotBlank() == true -> {
+                            Text(
+                                text = habit.description,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
 
                     if (habit.targetCount > 1) {
@@ -276,20 +291,6 @@ fun HabitCard(
                         }
                     }
                 }
-            }
-
-            if (isCompletedToday) {
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = if (todayNote.isNullOrBlank()) "📝 Add a note" else "📝 $todayNote",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .clickable { showNoteDialog = true }
-                        .padding(vertical = 2.dp)
-                )
             }
 
             Spacer(modifier = Modifier.height(10.dp))

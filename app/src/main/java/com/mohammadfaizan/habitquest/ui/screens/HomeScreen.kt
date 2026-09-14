@@ -1,19 +1,23 @@
 package com.mohammadfaizan.habitquest.ui.screens
 
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.CircularProgressIndicator
@@ -27,9 +31,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.mohammadfaizan.habitquest.data.local.Habit
 import com.mohammadfaizan.habitquest.data.local.HabitCompletion
@@ -58,6 +67,11 @@ fun HomeScreen(
     val selectedCategory by habitViewModel.selectedCategory.collectAsState()
     val actions by habitViewModel.actions.collectAsState()
     val context = LocalContext.current
+
+    // 0 = current week, -1 = previous week, etc. Hoisted here (rather than owned inside
+    // WeeklyCalendarWithData) so the "back to today" button can float above the FAB instead
+    // of living inline above the calendar.
+    var weekOffset by remember { mutableStateOf(0) }
 
     val todayKey = DateUtils.getCurrentDateKey()
     val anyIncompleteToday = uiState.habits.any { habit ->
@@ -106,14 +120,47 @@ fun HomeScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        // The outer Scaffold (MainActivity's TopAppBar) already accounts for the status bar;
+        // without this, this nested Scaffold applies its own systemBars inset on top of that
+        // and leaves a double gap between the app bar and the weekly calendar.
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
-            if (uiState.habits.isNotEmpty() && anyIncompleteToday) {
-                ExtendedFloatingActionButton(
-                    onClick = { habitViewModel.completeAllForToday() },
-                    icon = { Icon(imageVector = Icons.Default.Check, contentDescription = null) },
-                    text = { Text("Complete All") }
-                )
+            Column(horizontalAlignment = Alignment.End) {
+                if (weekOffset < 0) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(MaterialTheme.colorScheme.primaryContainer)
+                            .clickable {
+                                weekOffset = 0
+                                habitViewModel.loadWeeklyCompletions(0)
+                            }
+                            .padding(horizontal = 14.dp, vertical = 10.dp)
+                    ) {
+                        Text(
+                            text = "Back to Today",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                if (uiState.habits.isNotEmpty() && anyIncompleteToday) {
+                    ExtendedFloatingActionButton(
+                        onClick = { habitViewModel.completeAllForToday() },
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        },
+                        text = { Text("Complete All") }
+                    )
+                }
             }
         }
     ) { fabPadding ->
@@ -127,9 +174,10 @@ fun HomeScreen(
                     WeeklyCalendarWithData(
                         activeHabits = uiState.habits,
                         habitCompletions = uiState.weeklyCompletions,
-                        onWeekChange = { weekOffset ->
-                            // Load data for the selected week
-                            habitViewModel.loadWeeklyCompletions(weekOffset)
+                        weekOffset = weekOffset,
+                        onWeekChange = { newOffset ->
+                            weekOffset = newOffset
+                            habitViewModel.loadWeeklyCompletions(newOffset)
                         },
                         modifier = Modifier.fillMaxWidth()
                     )

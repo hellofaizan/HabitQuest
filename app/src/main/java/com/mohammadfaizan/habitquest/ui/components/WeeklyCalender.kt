@@ -1,18 +1,12 @@
 package com.mohammadfaizan.habitquest.ui.components
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.foundation.layout.Arrangement
@@ -218,9 +212,11 @@ fun WeeklyCalendarWithData(
     modifier: Modifier = Modifier,
     activeHabits: List<com.mohammadfaizan.habitquest.data.local.Habit>,
     habitCompletions: Map<String, List<com.mohammadfaizan.habitquest.data.local.HabitCompletion>>,
-    onWeekChange: ((Int) -> Unit)? = null  // Callback when week changes (offset: -1 = previous week)
+    // 0 = current week, -1 = previous week, etc. Hoisted so a caller can drive it from
+    // outside (e.g. a "back to today" affordance rendered elsewhere on the screen).
+    weekOffset: Int = 0,
+    onWeekChange: (Int) -> Unit = {}
 ) {
-    var weekOffset by remember { mutableStateOf(0) } // 0 = current week, -1 = previous week, etc.
     var dragOffset by remember { mutableStateOf(0f) }
     var isDragging by remember { mutableStateOf(false) }
 
@@ -256,39 +252,6 @@ fun WeeklyCalendarWithData(
     )
 
     Column(modifier = modifier) {
-        // Small "back to today" chip when viewing a past week — deliberately compact so it
-        // doesn't dominate the layout the way a full-width button did.
-        AnimatedVisibility(
-            visible = weekOffset < 0,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically()
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 16.dp, top = 6.dp, end = 16.dp),
-                horizontalArrangement = Arrangement.End
-            ) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(50))
-                        .background(MaterialTheme.colorScheme.primaryContainer)
-                        .clickable {
-                            weekOffset = 0
-                            onWeekChange?.invoke(0)
-                        }
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                ) {
-                    Text(
-                        text = "Back to Today",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
-            }
-        }
-
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -298,14 +261,10 @@ fun WeeklyCalendarWithData(
                             // Check if drag was significant enough to change week
                             if (dragOffset > 150f) {
                                 // Swiped right - go to previous week (older data)
-                                val newOffset = weekOffset - 1
-                                weekOffset = newOffset
-                                onWeekChange?.invoke(newOffset)
+                                onWeekChange(weekOffset - 1)
                             } else if (dragOffset < -150f && weekOffset < 0) {
                                 // Swiped left - go forward (toward current week)
-                                val newOffset = (weekOffset + 1).coerceAtMost(0)
-                                weekOffset = newOffset
-                                onWeekChange?.invoke(newOffset)
+                                onWeekChange((weekOffset + 1).coerceAtMost(0))
                             }
                             dragOffset = 0f
                             isDragging = false
