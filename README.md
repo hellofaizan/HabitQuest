@@ -96,9 +96,14 @@ A beautiful and intuitive habit tracking app built with Jetpack Compose. Track y
 ## 🎯 Roadmap
 
 See the [Features](#-features) section above for a complete list of planned features. Priority items include:
-- Home screen widget
-- Backup and restore functionality
-- Quick actions (complete all habits for today)
+1. Backup and restore functionality (export/import JSON/CSV) — menu entry exists but is a "Coming soon" stub
+2. Data export options (CSV export for Excel)
+3. Yearly/monthly overview screens with calendar heatmap
+4. Weekly/monthly reports with insights
+5. Habit chains visualization
+6. Home screen widget
+7. Progress photos/attachments to habit completions
+8. Dark mode scheduling (auto-switch based on time of day)
 
 ## 🤝 Contributing
 
