@@ -63,7 +63,7 @@ A beautiful and intuitive habit tracking app built with Jetpack Compose. Track y
 - [x] Random data generator for creating demo screenshots
 
 ### Widgets & Customization
-- [ ] Home screen widget showing today habits and completion status
+- [x] Home screen widget showing today habits and completion status (3-day and monthly variants, per-widget habit picker)
 - [ ] Dark mode scheduling (auto-switch based on time of day)
 
 ## 🛠 Tech Stack
@@ -99,9 +99,8 @@ See the [Features](#-features) section above for a complete list of planned feat
 1. Data export options (CSV export for Excel)
 2. Yearly/monthly overview screens with calendar heatmap
 3. Weekly/monthly reports with insights
-4. Home screen widget
-5. Progress photos/attachments to habit completions
-6. Dark mode scheduling (auto-switch based on time of day)
+4. Progress photos/attachments to habit completions
+5. Dark mode scheduling (auto-switch based on time of day)
 
 ## 🤝 Contributing
 
