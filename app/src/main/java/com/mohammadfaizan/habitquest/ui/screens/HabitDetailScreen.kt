@@ -2,6 +2,7 @@ package com.mohammadfaizan.habitquest.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,17 +16,24 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -35,7 +43,10 @@ import com.mohammadfaizan.habitquest.data.local.Habit
 import com.mohammadfaizan.habitquest.data.local.HabitCompletion
 import com.mohammadfaizan.habitquest.domain.repository.HabitStats
 import com.mohammadfaizan.habitquest.ui.components.ContributionGraph
+import com.mohammadfaizan.habitquest.ui.components.ShareableProgressCard
 import com.mohammadfaizan.habitquest.utils.Achievements
+import com.mohammadfaizan.habitquest.utils.shareBitmap
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 @Composable
@@ -48,6 +59,9 @@ fun HabitDetailScreen(
     modifier: Modifier = Modifier
 ) {
     val habitColor = Color(habit.color.toColorInt())
+    val graphicsLayer = rememberGraphicsLayer()
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     Column(
         modifier = modifier
@@ -203,6 +217,51 @@ fun HabitDetailScreen(
             completions = completions,
             modifier = Modifier.fillMaxWidth()
         )
+
+        Spacer(modifier = Modifier.height(28.dp))
+
+        Text(
+            text = "Share Your Progress",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // The graphicsLayer records this card's drawing commands on every frame it's visible,
+        // so by the time "Share" is tapped it already holds the current rendered content —
+        // toImageBitmap() just reads that back, no extra draw pass needed.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .drawWithContent {
+                    graphicsLayer.record {
+                        this@drawWithContent.drawContent()
+                    }
+                    drawLayer(graphicsLayer)
+                }
+        ) {
+            ShareableProgressCard(
+                habit = habit,
+                completions = completions,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Button(
+            onClick = {
+                scope.launch {
+                    val bitmap = graphicsLayer.toImageBitmap().asAndroidBitmap()
+                    shareBitmap(context, bitmap)
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("📤 Share")
+        }
 
         Spacer(modifier = Modifier.height(28.dp))
     }

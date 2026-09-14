@@ -59,7 +59,7 @@ A beautiful and intuitive habit tracking app built with Jetpack Compose. Track y
 - [ ] Progress photos/attachments to habit completions
 
 ### Sharing & Social
-- [ ] Habit sharing (share progress graphs as images to social media)
+- [x] Habit sharing (share progress graphs as images to social media)
 - [x] Random data generator for creating demo screenshots
 
 ### Widgets & Customization
