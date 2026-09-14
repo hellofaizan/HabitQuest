@@ -42,7 +42,7 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 
 val HabitIdParam = ActionParameters.Key<Long>("habit_id")
-private const val WEEKLY_WIDGET_DAYS = 7
+private const val WEEKLY_WIDGET_DAYS = 10
 private const val WEEKLY_GAP_DP = 3f
 // Card padding (14dp/side), the check button (36dp) and the spacer before it (10dp).
 private const val WEEKLY_CHROME_WIDTH_DP = 28f + 36f + 10f
@@ -128,7 +128,7 @@ private fun HabitWidgetWeeklyContent(data: HabitWidgetData?, rowBitmap: Bitmap?,
                 if (rowBitmap != null) {
                     Image(
                         provider = ImageProvider(rowBitmap),
-                        contentDescription = "Last 7 days",
+                        contentDescription = "Last 10 days",
                         modifier = GlanceModifier.fillMaxWidth().height(rowHeightDp.dp)
                     )
                 }
