@@ -37,6 +37,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.mohammadfaizan.habitquest.data.local.AppDatabase
 import com.mohammadfaizan.habitquest.data.local.Habit
+import com.mohammadfaizan.habitquest.data.repository.BackupRepositoryImpl
 import com.mohammadfaizan.habitquest.data.repository.HabitCompletionRepositoryImpl
 import com.mohammadfaizan.habitquest.data.repository.HabitManagementRepositoryImpl
 import com.mohammadfaizan.habitquest.data.repository.HabitRepositoryImpl
@@ -45,18 +46,21 @@ import com.mohammadfaizan.habitquest.domain.usecase.AddHabitUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.ArchiveHabitUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.CompleteHabitUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.DeleteHabitUseCase
+import com.mohammadfaizan.habitquest.domain.usecase.ExportBackupUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.FreezeStreakUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.GenerateRandomDataUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.GetAnalyticsUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.GetHabitsUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.GetHabitStatsUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.GetHabitsWithCompletionStatusUseCase
+import com.mohammadfaizan.habitquest.domain.usecase.ImportBackupUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.ReorderHabitsUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.UncompleteHabitUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.UpdateHabitResult
 import com.mohammadfaizan.habitquest.domain.usecase.UpdateHabitUseCase
 import com.mohammadfaizan.habitquest.ui.components.TopAppBarComponent
 import com.mohammadfaizan.habitquest.ui.screens.AddHabitScreen
+import com.mohammadfaizan.habitquest.ui.screens.BackupRestoreScreen
 import com.mohammadfaizan.habitquest.ui.screens.GeneralSettingsScreen
 import com.mohammadfaizan.habitquest.ui.screens.AnalyticsScreen
 import com.mohammadfaizan.habitquest.ui.screens.ArchivedHabitsScreen
@@ -72,6 +76,7 @@ import com.mohammadfaizan.habitquest.ui.viewmodel.AddHabitActionType
 import com.mohammadfaizan.habitquest.ui.viewmodel.AddHabitViewModel
 import com.mohammadfaizan.habitquest.ui.viewmodel.AVAILABLE_HABIT_ICONS
 import com.mohammadfaizan.habitquest.ui.viewmodel.AnalyticsViewModel
+import com.mohammadfaizan.habitquest.ui.viewmodel.BackupViewModel
 import com.mohammadfaizan.habitquest.ui.viewmodel.HabitDetailViewModel
 import com.mohammadfaizan.habitquest.ui.viewmodel.HabitViewModel
 import com.mohammadfaizan.habitquest.utils.DateUtils
@@ -97,6 +102,7 @@ private object Routes {
     const val HABIT_DETAIL = "habit_detail"
     const val ANALYTICS = "analytics"
     const val ARCHIVED_HABITS = "archived_habits"
+    const val BACKUP_RESTORE = "backup_restore"
 }
 
 class MainActivity : ComponentActivity() {
@@ -146,6 +152,21 @@ class MainActivity : ComponentActivity() {
                         AnalyticsViewModel(
                             GetAnalyticsUseCase(habitRepo, habitManagementRepo, habitCompletionRepo),
                             GetHabitStatsUseCase(habitManagementRepo)
+                        )
+                    }
+                    val backupRepo = remember {
+                        BackupRepositoryImpl(
+                            db,
+                            db.habitDao(),
+                            db.habitCompletionDao(),
+                            db.habitFreezeDao(),
+                            db.appPreferencesDao()
+                        )
+                    }
+                    val backupViewModel = remember {
+                        BackupViewModel(
+                            ExportBackupUseCase(backupRepo),
+                            ImportBackupUseCase(backupRepo, habitManagementRepo)
                         )
                     }
 
@@ -332,6 +353,10 @@ class MainActivity : ComponentActivity() {
                                             onNavigateToArchived = {
                                                 scope.launch { drawerState.close() }
                                                 navController.navigate(Routes.ARCHIVED_HABITS)
+                                            },
+                                            onNavigateToBackupRestore = {
+                                                scope.launch { drawerState.close() }
+                                                navController.navigate(Routes.BACKUP_RESTORE)
                                             },
                                             habitViewModel = habitViewModel
                                         )
@@ -616,6 +641,26 @@ class MainActivity : ComponentActivity() {
                                                     "Habit restored",
                                                     Toast.LENGTH_SHORT
                                                 ).show()
+                                            },
+                                            modifier = Modifier.padding(innerPadding)
+                                        )
+                                    }
+
+                                    composable(Routes.BACKUP_RESTORE) {
+                                        BackupRestoreScreen(
+                                            viewModel = backupViewModel,
+                                            onBackClick = {
+                                                navController.popBackStack()
+                                            },
+                                            onImportComplete = {
+                                                // A restore bypasses the normal add/update paths that
+                                                // usually (re)schedule reminders, so do it once here
+                                                // for every habit the backup brought in.
+                                                scope.launch {
+                                                    habitRepo.getAllHabits().first().forEach { habit ->
+                                                        NotificationScheduler.scheduleHabitReminder(context, habit)
+                                                    }
+                                                }
                                             },
                                             modifier = Modifier.padding(innerPadding)
                                         )

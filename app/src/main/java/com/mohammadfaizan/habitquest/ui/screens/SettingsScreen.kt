@@ -69,6 +69,7 @@ fun SettingsDrawerContent(
     onNavigateToReorder: () -> Unit = {},
     onNavigateToAnalytics: () -> Unit = {},
     onNavigateToArchived: () -> Unit = {},
+    onNavigateToBackupRestore: () -> Unit = {},
     habitViewModel: com.mohammadfaizan.habitquest.ui.viewmodel.HabitViewModel? = null,
     modifier: Modifier = Modifier
 ) {
@@ -169,8 +170,12 @@ fun SettingsDrawerContent(
                             )
                         }
                     ) {
-                        Toast.makeText(context, "Coming soon! Work in progress", Toast.LENGTH_SHORT)
-                            .show()
+                        try {
+                            view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
+                        } catch (e: Exception) {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+                        onNavigateToBackupRestore()
                     },
                     MenuItem(
                         title = "Fill Graph with Random Data",
