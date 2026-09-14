@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -45,10 +44,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
@@ -263,12 +264,15 @@ fun HabitCard(
 
                     if (confettiVisible) {
                         key(confettiTrigger) {
-                            ConfettiBurst(
-                                modifier = Modifier
-                                    .wrapContentSize(unbounded = true)
-                                    .size(72.dp),
-                                onFinished = { confettiVisible = false }
-                            )
+                            // Reports (0, 0) to its parent no matter how big the burst draws,
+                            // so it floats over the card instead of stretching the Row/Card
+                            // to fit a 72dp burst around a 40dp button.
+                            FloatingOverlay {
+                                ConfettiBurst(
+                                    modifier = Modifier.size(72.dp),
+                                    onFinished = { confettiVisible = false }
+                                )
+                            }
                         }
                     }
                 }
@@ -345,6 +349,26 @@ private fun NoteEditDialog(
             }
         }
     )
+}
+
+// Measures its content unconstrained but always reports zero size to its own
+// parent, centering the content on top of that zero-size point instead. Lets an
+// overlay (like the confetti burst) draw larger than its anchor without ever
+// resizing the layout it sits inside.
+@Composable
+private fun FloatingOverlay(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    Layout(content = content, modifier = modifier) { measurables, _ ->
+        val placeable = measurables.firstOrNull()?.measure(Constraints())
+        layout(0, 0) {
+            placeable?.placeRelative(
+                x = -(placeable.width / 2),
+                y = -(placeable.height / 2)
+            )
+        }
+    }
 }
 
 private data class ConfettiParticle(
