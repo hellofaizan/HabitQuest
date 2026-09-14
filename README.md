@@ -56,7 +56,7 @@ A beautiful and intuitive habit tracking app built with Jetpack Compose. Track y
 ### Data & Backup
 - [x] Backup and restore functionality (export/import JSON)
 - [ ] Data export options (share progress as image, export to CSV for Excel)
-- [ ] Progress photos/attachments to habit completions
+- [x] Progress photos/attachments to habit completions
 
 ### Sharing & Social
 - [x] Habit sharing (share progress graphs as images to social media)
@@ -99,8 +99,7 @@ See the [Features](#-features) section above for a complete list of planned feat
 1. Data export options (CSV export for Excel)
 2. Yearly/monthly overview screens with calendar heatmap
 3. Weekly/monthly reports with insights
-4. Progress photos/attachments to habit completions
-5. Dark mode scheduling (auto-switch based on time of day)
+4. Dark mode scheduling (auto-switch based on time of day)
 
 ## 🤝 Contributing
 
