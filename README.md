@@ -45,7 +45,7 @@ A beautiful and intuitive habit tracking app built with Jetpack Compose. Track y
 - [x] Undo completion feature (tap the completed checkmark again to undo)
 - [x] Quick action: complete all habits for today
 - [x] Quick add common habits via Habit templates/presets
-- [ ] Onboarding tips/tutorial for first-time users
+- [x] Onboarding tips/tutorial for first-time users
 - [x] Custom icon picker for habits (emoji-based, shown on habit cards)
 - [ ] Streak freeze feature (allow skipping days without breaking streak)
 
