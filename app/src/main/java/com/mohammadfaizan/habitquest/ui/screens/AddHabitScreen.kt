@@ -5,6 +5,7 @@ import android.view.ViewTreeObserver
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -30,6 +31,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -126,6 +129,14 @@ fun AddHabitScreen(
 
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
+
+    // Collapsed by default for a new habit to keep the form short; pre-expanded when
+    // editing a habit that already has something set in that section.
+    var detailsExpanded by remember {
+        mutableStateOf(!habitToEdit?.description.isNullOrBlank() || !habitToEdit?.category.isNullOrBlank())
+    }
+    var targetCountExpanded by remember { mutableStateOf((habitToEdit?.targetCount ?: 1) > 1) }
+    var reminderExpanded by remember { mutableStateOf(habitToEdit?.reminderEnabled == true) }
 
     val formState by viewModel?.formState?.collectAsState() ?: remember { mutableStateOf(null) }
     val validation by viewModel?.validation?.collectAsState() ?: remember { mutableStateOf(null) }
@@ -408,14 +419,49 @@ fun AddHabitScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        InputField(
-            value = currentDescription,
-            onValueChange = updateDescription,
-            label = "Description (Optional)",
-            placeholder = "Enter habit description",
-            keyboardType = KeyboardType.Text,
-            singleLine = false
-        )
+        val detailsSubtitle = listOfNotNull(
+            currentCategory.takeIf { it.isNotBlank() },
+            currentDescription.takeIf { it.isNotBlank() }
+        ).joinToString(" · ").ifEmpty { "Optional" }
+
+        AccordionSection(
+            title = "Description & Category",
+            subtitle = detailsSubtitle,
+            expanded = detailsExpanded,
+            onToggle = { detailsExpanded = !detailsExpanded }
+        ) {
+            InputField(
+                value = currentDescription,
+                onValueChange = updateDescription,
+                label = "Description (Optional)",
+                placeholder = "Enter habit description",
+                keyboardType = KeyboardType.Text,
+                singleLine = false
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "Category",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(vertical = 4.dp)
+            ) {
+                items(availableCategories) { category ->
+                    CategoryChips(
+                        category = category,
+                        isSelected = currentCategory == category,
+                        onCategorySelected = { updateCategory(category) }
+                    )
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.height(20.dp))
 
@@ -464,29 +510,6 @@ fun AddHabitScreen(
         }
 
         Spacer(modifier = Modifier.height(20.dp))
-
-        Text(
-            text = "Category (Optional)",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Medium
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(vertical = 8.dp)
-        ) {
-            items(availableCategories) { category ->
-                CategoryChips(
-                    category = category,
-                    isSelected = currentCategory == category,
-                    onCategorySelected = { updateCategory(category) }
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
         /*
         Daily Weekly Frequescy selector
         Text(
@@ -513,149 +536,154 @@ fun AddHabitScreen(
         Spacer(modifier = Modifier.height(20.dp))
         */
 
-        Text(
-            text = "Target Count",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Medium
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+        AccordionSection(
+            title = "Target Count",
+            subtitle = "$currentTargetCount time${if (currentTargetCount == 1) "" else "s"} per day",
+            expanded = targetCountExpanded,
+            onToggle = { targetCountExpanded = !targetCountExpanded }
         ) {
-            OutlinedButton(
-                onClick = {
-                    try {
-                        view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
-                    } catch (e: Exception) {
-                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                    }
-                    if (currentTargetCount > 1) updateTargetCount(currentTargetCount - 1)
-                },
-                modifier = Modifier.size(48.dp)
-            ) {
-                Icon(
-                    Icons.Default.Add,
-                    contentDescription = "Add Target"
-                )
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Text(
-                text = currentTargetCount.toString(),
-                style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.weight(1f),
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            OutlinedButton(
-                onClick = {
-                    try {
-                        view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
-                    } catch (e: Exception) {
-                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                    }
-                    updateTargetCount(currentTargetCount + 1)
-                },
-                modifier = Modifier.size(48.dp)
-            ) {
-                Icon(
-                    Icons.Default.Add,
-                    contentDescription = "Add Target"
-                )
-            }
-        }
-
-        if (targetCountError != null) {
-            Text(
-                text = targetCountError,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(start = 16.dp, top = 4.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.Notifications,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp)
-            )
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Text(
-                text = "Set Reminder",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.weight(1f)
-            )
-
-            Switch(
-                checked = currentReminderEnabled,
-                onCheckedChange = updateReminderEnabled
-            )
-        }
-
-        if (currentReminderEnabled) {
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "Remind on",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                reminderDayOptions.forEach { (day, label) ->
-                    DayToggleChip(
-                        label = label,
-                        selected = day in currentReminderDays,
-                        onClick = { toggleReminderDay(day) },
-                        modifier = Modifier.weight(1f)
+                OutlinedButton(
+                    onClick = {
+                        try {
+                            view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
+                        } catch (e: Exception) {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+                        if (currentTargetCount > 1) updateTargetCount(currentTargetCount - 1)
+                    },
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "Add Target"
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                Text(
+                    text = currentTargetCount.toString(),
+                    style = MaterialTheme.typography.headlineMedium,
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                OutlinedButton(
+                    onClick = {
+                        try {
+                            view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
+                        } catch (e: Exception) {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+                        updateTargetCount(currentTargetCount + 1)
+                    },
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "Add Target"
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            if (targetCountError != null) {
+                Text(
+                    text = targetCountError,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                )
+            }
+        }
 
-            OutlinedButton(
-                onClick = { showTimePicker = true },
-                modifier = Modifier.fillMaxWidth()
+        Spacer(modifier = Modifier.height(16.dp))
+
+        AccordionSection(
+            title = "Reminder",
+            subtitle = if (currentReminderEnabled) "On · $currentReminderTime" else "Off",
+            expanded = reminderExpanded,
+            onToggle = { reminderExpanded = !reminderExpanded }
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
                     imageVector = Icons.Default.Notifications,
                     contentDescription = null,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(24.dp)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Reminder Time: $currentReminderTime")
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Text(
+                    text = "Enable reminder",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f)
+                )
+
+                Switch(
+                    checked = currentReminderEnabled,
+                    onCheckedChange = updateReminderEnabled
+                )
             }
 
-            if (showTimePicker) {
-                ReminderTimePickerDialog(
-                    initialTime = currentReminderTime,
-                    onConfirm = { time ->
-                        updateReminderTime(time)
-                        showTimePicker = false
-                    },
-                    onDismiss = { showTimePicker = false }
+            if (currentReminderEnabled) {
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Remind on",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    reminderDayOptions.forEach { (day, label) ->
+                        DayToggleChip(
+                            label = label,
+                            selected = day in currentReminderDays,
+                            onClick = { toggleReminderDay(day) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedButton(
+                    onClick = { showTimePicker = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Notifications,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Reminder Time: $currentReminderTime")
+                }
+
+                if (showTimePicker) {
+                    ReminderTimePickerDialog(
+                        initialTime = currentReminderTime,
+                        onConfirm = { time ->
+                            updateReminderTime(time)
+                            showTimePicker = false
+                        },
+                        onDismiss = { showTimePicker = false }
+                    )
+                }
             }
         }
 
@@ -760,6 +788,58 @@ fun AddHabitScreen(
             titleContentColor = MaterialTheme.colorScheme.onSurface,
             textContentColor = MaterialTheme.colorScheme.onSurfaceVariant
         )
+    }
+}
+
+@Composable
+private fun AccordionSection(
+    title: String,
+    subtitle: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onToggle() }
+                .padding(horizontal = 14.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Icon(
+                imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                contentDescription = if (expanded) "Collapse" else "Expand",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        AnimatedVisibility(visible = expanded) {
+            Column(modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 14.dp)) {
+                content()
+            }
+        }
     }
 }
 
