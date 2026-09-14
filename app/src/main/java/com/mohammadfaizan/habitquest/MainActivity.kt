@@ -375,6 +375,7 @@ class MainActivity : ComponentActivity() {
                                         }
                                     ) {
                                         var showProSheet by remember { mutableStateOf(false) }
+                                        var showSearchBar by remember { mutableStateOf(false) }
 
                                         Scaffold(
                                             topBar = {
@@ -396,13 +397,18 @@ class MainActivity : ComponentActivity() {
                                                     },
                                                     onCrownClick = {
                                                         showProSheet = true
-                                                    }
+                                                    },
+                                                    onSearchClick = {
+                                                        showSearchBar = !showSearchBar
+                                                    },
+                                                    isSearchActive = showSearchBar
                                                 )
                                             },
                                             modifier = Modifier.fillMaxSize()
                                         ) { homeInnerPadding ->
                                             HomeScreen(
                                                 habitViewModel = habitViewModel,
+                                                showSearchBar = showSearchBar,
                                                 onAddHabitClick = {
                                                     habitToEdit = null
                                                     addHabitViewModel.resetForm()

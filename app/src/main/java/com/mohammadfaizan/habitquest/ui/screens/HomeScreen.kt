@@ -46,6 +46,7 @@ import com.mohammadfaizan.habitquest.utils.DateUtils
 @Composable
 fun HomeScreen(
     habitViewModel: HabitViewModel,
+    showSearchBar: Boolean = false,
     onAddHabitClick: () -> Unit = {},
     onHabitClick: (Habit) -> Unit = {},
     onHabitLongClick: (Habit) -> Unit = {},
@@ -112,6 +113,7 @@ fun HomeScreen(
                 )
 
                 HabitSearchAndFilter(
+                    showSearchBar = showSearchBar,
                     query = searchQuery,
                     onQueryChange = habitViewModel::updateSearchQuery,
                     categories = uiState.habits.mapNotNull { it.category }.distinct().sorted(),
@@ -197,6 +199,7 @@ fun HomeScreen(
 
 @Composable
 private fun HabitSearchAndFilter(
+    showSearchBar: Boolean,
     query: String,
     onQueryChange: (String) -> Unit,
     categories: List<String>,
@@ -205,28 +208,32 @@ private fun HabitSearchAndFilter(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-        OutlinedTextField(
-            value = query,
-            onValueChange = onQueryChange,
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Search habits") },
-            singleLine = true,
-            trailingIcon = {
-                if (query.isNotEmpty()) {
-                    Text(
-                        text = "✕",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .padding(end = 12.dp)
-                            .clickable { onQueryChange("") }
-                    )
+        if (showSearchBar) {
+            OutlinedTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Search habits") },
+                singleLine = true,
+                trailingIcon = {
+                    if (query.isNotEmpty()) {
+                        Text(
+                            text = "✕",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .padding(end = 12.dp)
+                                .clickable { onQueryChange("") }
+                        )
+                    }
                 }
+            )
+
+            if (categories.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(10.dp))
             }
-        )
+        }
 
         if (categories.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(10.dp))
-
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(categories) { category ->
                     CategoryChips(
