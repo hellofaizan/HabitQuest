@@ -41,11 +41,12 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 
-// Same 7-rows-per-column (weekday x week) layout ContributionGraph uses in-app, but covering a
-// full year (53 weeks fully covers 365 days) instead of the app's 182-day window.
+// Same 182-day (7 rows x 26 columns) window as ContributionGraph in-app (see graphDays in
+// ui/components/biannualgraph.kt) — matching the home screen habit card exactly, not a
+// separate "full year" range.
 private const val GRAPH_ROWS = 7
-private const val GRAPH_COLUMNS = 53
-private const val GRAPH_WIDGET_DAYS = 365
+private const val GRAPH_COLUMNS = 26
+private const val GRAPH_WIDGET_DAYS = GRAPH_ROWS * GRAPH_COLUMNS
 private const val GRAPH_GAP_DP = 1.5f
 
 class HabitWidgetMonth : GlanceAppWidget() {
@@ -74,7 +75,7 @@ class HabitWidgetMonth : GlanceAppWidget() {
                 data = loaded
                 if (loaded != null) {
                     // Grid card padding is 14dp a side (see WidgetCard); the rest of the
-                    // available width is the grid's budget, divided evenly across 53 columns.
+                    // available width is the grid's budget, divided evenly across the columns.
                     val gridWidthDp = (availableWidthDp - 28f).coerceAtLeast(GRAPH_COLUMNS * 2f)
                     val cellSizeDp = (gridWidthDp - (GRAPH_COLUMNS - 1) * GRAPH_GAP_DP) / GRAPH_COLUMNS
                     val density = context.resources.displayMetrics.density
