@@ -56,6 +56,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -65,9 +66,11 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.core.graphics.toColorInt
 import androidx.core.view.HapticFeedbackConstantsCompat
 import com.mohammadfaizan.habitquest.data.local.Habit
 import com.mohammadfaizan.habitquest.ui.components.CategoryChips
@@ -77,6 +80,8 @@ import com.mohammadfaizan.habitquest.ui.viewmodel.AddHabitViewModel
 import com.mohammadfaizan.habitquest.ui.viewmodel.AVAILABLE_HABIT_ICONS
 import com.mohammadfaizan.habitquest.ui.viewmodel.DEFAULT_REMINDER_DAYS
 import com.mohammadfaizan.habitquest.utils.DateUtils
+import com.mohammadfaizan.habitquest.utils.HABIT_TEMPLATES
+import com.mohammadfaizan.habitquest.utils.HabitTemplate
 import com.mohammadfaizan.habitquest.utils.PermissionUtils
 import java.util.Calendar
 
@@ -208,6 +213,15 @@ fun AddHabitScreen(
         } else {
             targetCount = newTargetCount
         }
+    }
+
+    val applyTemplate = { template: HabitTemplate ->
+        updateName(template.name)
+        updateDescription(template.description)
+        updateColor(template.color)
+        updateIcon(template.icon)
+        updateCategory(template.category)
+        updateTargetCount(template.targetCount)
     }
 
     // Permission launcher for notification permission
@@ -350,6 +364,30 @@ fun AddHabitScreen(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Delete Habit",
                         tint = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+        }
+
+        if (habitToEdit == null) {
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "Quick Start",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(vertical = 8.dp)
+            ) {
+                items(HABIT_TEMPLATES) { template ->
+                    TemplateOption(
+                        template = template,
+                        onSelected = { applyTemplate(template) }
                     )
                 }
             }
@@ -818,6 +856,43 @@ private fun ReminderTimePickerDialog(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun TemplateOption(
+    template: HabitTemplate,
+    onSelected: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .width(72.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .clickable { onSelected() }
+            .padding(vertical = 10.dp, horizontal = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(Color(template.color.toColorInt()).copy(alpha = 0.15f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(text = template.icon, fontSize = 18.sp)
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Text(
+            text = template.name,
+            style = MaterialTheme.typography.labelSmall,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 

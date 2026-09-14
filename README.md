@@ -20,7 +20,7 @@ A beautiful and intuitive habit tracking app built with Jetpack Compose. Track y
 - [x] Set target count for habits (1+ completions per day)
 - [x] Habit frequency options (Daily, Weekly, Monthly, Custom)
 - [x] Category-based organization
-- [ ] Habit templates/presets (common habits like exercise, meditation, reading)
+- [x] Habit templates/presets (common habits like exercise, meditation, reading)
 - [x] Archive functionality for inactive habits (keep history but hide from main view)
 - [x] Habit reordering by drag and drop (priority sorting)
 - [x] Search and filter UI for habits (by name, category)
@@ -44,7 +44,7 @@ A beautiful and intuitive habit tracking app built with Jetpack Compose. Track y
 - [x] Add ability to edit/add notes when completing habits (tap completion to edit)
 - [x] Undo completion feature (tap the completed checkmark again to undo)
 - [x] Quick action: complete all habits for today
-- [ ] Quick add common habits (see Habit templates/presets below)
+- [x] Quick add common habits via Habit templates/presets
 - [ ] Onboarding tips/tutorial for first-time users
 - [x] Custom icon picker for habits (emoji-based, shown on habit cards)
 - [ ] Streak freeze feature (allow skipping days without breaking streak)
