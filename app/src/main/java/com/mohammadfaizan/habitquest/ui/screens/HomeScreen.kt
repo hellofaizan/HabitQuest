@@ -223,6 +223,9 @@ fun HomeScreen(
                             onNoteSave = { habit, note ->
                                 habitViewModel.updateTodayNote(habit.id, note)
                             },
+                            onPhotoPathChange = { habit, photoPath ->
+                                habitViewModel.updateTodayPhoto(habit.id, photoPath)
+                            },
                             modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -305,6 +308,7 @@ private fun HabitListContent(
     onCompleteClick: (Habit) -> Unit,
     onUndoClick: (Habit) -> Unit,
     onNoteSave: (Habit, String) -> Unit,
+    onPhotoPathChange: (Habit, String?) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -322,6 +326,7 @@ private fun HabitListContent(
                 onCompleteClick = { onCompleteClick(habit) },
                 onUndoClick = { onUndoClick(habit) },
                 onNoteSave = { note -> onNoteSave(habit, note) },
+                onPhotoPathChange = { photoPath -> onPhotoPathChange(habit, photoPath) },
                 modifier = Modifier.fillMaxWidth()
             )
         }

@@ -1,5 +1,9 @@
 package com.mohammadfaizan.habitquest.ui.components
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -36,6 +40,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,7 +49,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
@@ -54,8 +61,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
 import androidx.core.view.HapticFeedbackConstantsCompat
+import coil.compose.AsyncImage
 import com.mohammadfaizan.habitquest.data.local.Habit
 import com.mohammadfaizan.habitquest.data.local.HabitCompletion
+import com.mohammadfaizan.habitquest.utils.deleteCompletionPhoto
+import com.mohammadfaizan.habitquest.utils.saveCompletionPhoto
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -74,6 +88,7 @@ fun HabitCard(
     onCompleteClick: () -> Unit = {},
     onUndoClick: () -> Unit = {},
     onNoteSave: (String) -> Unit = {},
+    onPhotoPathChange: (String?) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val hapticFeedback = LocalHapticFeedback.current
@@ -93,10 +108,11 @@ fun HabitCard(
 
     val canCompleteMore = todayCompletionCount < habit.targetCount
 
-    val todayNote = completions
+    val todayCompletion = completions
         .filter { it.dateKey == today }
         .maxByOrNull { it.completedAt }
-        ?.notes
+    val todayNote = todayCompletion?.notes
+    val todayPhotoPath = todayCompletion?.photoPath
 
     var confettiTrigger by remember { mutableStateOf(0) }
     var confettiVisible by remember { mutableStateOf(false) }
@@ -167,14 +183,31 @@ fun HabitCard(
                         // more relevant line at that point, and keeps the card from growing
                         // a second row just to hold it.
                         isCompletedToday -> {
-                            Text(
-                                text = if (todayNote.isNullOrBlank()) "📝 Add a note" else "📝 $todayNote",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.clickable { showNoteDialog = true }
-                            )
+                            Row(
+                                modifier = Modifier.clickable { showNoteDialog = true },
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (todayPhotoPath.isNullOrBlank()) {
+                                    Text(text = "📝", style = MaterialTheme.typography.bodySmall)
+                                } else {
+                                    AsyncImage(
+                                        model = File(todayPhotoPath),
+                                        contentDescription = "Attached photo",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .size(16.dp)
+                                            .clip(RoundedCornerShape(4.dp))
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = todayNote?.takeIf { it.isNotBlank() } ?: "Add a note",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
                         habit.description?.isNotBlank() == true -> {
                             Text(
@@ -310,9 +343,13 @@ fun HabitCard(
     if (showNoteDialog) {
         NoteEditDialog(
             initialNote = todayNote ?: "",
+            initialPhotoPath = todayPhotoPath,
+            habitId = habit.id,
+            dateKey = today,
             onDismiss = { showNoteDialog = false },
-            onSave = { note ->
+            onSave = { note, photoPath ->
                 onNoteSave(note)
+                onPhotoPathChange(photoPath)
                 showNoteDialog = false
             }
         )
@@ -322,25 +359,107 @@ fun HabitCard(
 @Composable
 private fun NoteEditDialog(
     initialNote: String,
+    initialPhotoPath: String?,
+    habitId: Long,
+    dateKey: String,
     onDismiss: () -> Unit,
-    onSave: (String) -> Unit
+    onSave: (String, String?) -> Unit
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var noteText by remember { mutableStateOf(initialNote) }
+    // Committed-on-disk path (or an already-cleared selection); a freshly picked-but-not-yet-
+    // copied image lives separately in pendingPickedUri so nothing touches disk until Save.
+    var currentPhotoPath by remember { mutableStateOf(initialPhotoPath) }
+    var pendingPickedUri by remember { mutableStateOf<Uri?>(null) }
+    var isSaving by remember { mutableStateOf(false) }
+
+    val photoPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri -> if (uri != null) pendingPickedUri = uri }
+
+    val previewModel: Any? = pendingPickedUri ?: currentPhotoPath?.let { File(it) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Note for today") },
+        title = { Text("Today's Completion") },
         text = {
-            OutlinedTextField(
-                value = noteText,
-                onValueChange = { noteText = it },
-                placeholder = { Text("How did it go?") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = false
-            )
+            Column {
+                OutlinedTextField(
+                    value = noteText,
+                    onValueChange = { noteText = it },
+                    placeholder = { Text("How did it go?") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = false
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                if (previewModel != null) {
+                    AsyncImage(
+                        model = previewModel,
+                        contentDescription = "Photo preview",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(160.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                Row {
+                    TextButton(
+                        onClick = {
+                            photoPicker.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        }
+                    ) {
+                        Text(if (previewModel == null) "Add Photo" else "Change Photo")
+                    }
+                    if (previewModel != null) {
+                        TextButton(
+                            onClick = {
+                                pendingPickedUri = null
+                                currentPhotoPath = null
+                            }
+                        ) {
+                            Text("Remove")
+                        }
+                    }
+                }
+            }
         },
         confirmButton = {
-            TextButton(onClick = { onSave(noteText) }) {
+            TextButton(
+                enabled = !isSaving,
+                onClick = {
+                    isSaving = true
+                    scope.launch {
+                        val finalPath = withContext(Dispatchers.IO) {
+                            val pickedUri = pendingPickedUri
+                            when {
+                                pickedUri != null -> {
+                                    val newPath = saveCompletionPhoto(context, pickedUri, habitId, dateKey)
+                                    if (newPath != null) {
+                                        deleteCompletionPhoto(initialPhotoPath)
+                                        newPath
+                                    } else {
+                                        currentPhotoPath
+                                    }
+                                }
+                                currentPhotoPath == null && initialPhotoPath != null -> {
+                                    deleteCompletionPhoto(initialPhotoPath)
+                                    null
+                                }
+                                else -> currentPhotoPath
+                            }
+                        }
+                        onSave(noteText, finalPath)
+                    }
+                }
+            ) {
                 Text("Save")
             }
         },

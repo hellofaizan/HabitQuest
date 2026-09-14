@@ -18,6 +18,7 @@ import com.mohammadfaizan.habitquest.domain.repository.HabitRepository
 import com.mohammadfaizan.habitquest.domain.repository.HabitManagementRepository
 import com.mohammadfaizan.habitquest.utils.Achievements
 import com.mohammadfaizan.habitquest.utils.DateUtils
+import com.mohammadfaizan.habitquest.utils.deleteCompletionPhoto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -355,6 +356,24 @@ class HabitViewModel @Inject constructor(
         }
     }
 
+    fun updateTodayPhoto(habitId: Long, photoPath: String?) {
+        viewModelScope.launch {
+            try {
+                val dateKey = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                val success = habitManagementRepository.updateCompletionPhoto(habitId, dateKey, photoPath)
+                if (success) {
+                    loadHabitCompletions()
+                } else {
+                    _uiState.value = _uiState.value.copy(error = "No completion found for today")
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    error = "Failed to update photo: ${e.message}"
+                )
+            }
+        }
+    }
+
     fun uncompleteHabit(habitId: Long) {
         // Same in-flight guard as completeHabit — also blocks a stray double-tap racing an
         // in-progress complete/uncomplete for the same habit.
@@ -378,6 +397,10 @@ class HabitViewModel @Inject constructor(
                         val updatedCompletionsMap = _uiState.value.habitCompletions.toMutableMap()
                         updatedCompletionsMap[habitId] = updatedCompletions
                         _uiState.value = _uiState.value.copy(habitCompletions = updatedCompletionsMap)
+
+                        // The completion row is gone; its attached photo file (if any) would
+                        // otherwise be orphaned on disk with nothing left pointing at it.
+                        deleteCompletionPhoto(mostRecentToday.photoPath)
 
                         loadWeeklyCompletions()
                     }
