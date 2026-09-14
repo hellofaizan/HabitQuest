@@ -133,6 +133,10 @@ private fun HabitCompletion.toJson(): JSONObject = JSONObject().apply {
     put("habitId", habitId)
     put("completedAt", completedAt.time)
     put("notes", notes)
+    // Points at a file under this device's private storage — restoring on a different device
+    // (or after a fresh install) won't have that file, so the photo just won't load. The path
+    // itself is still worth keeping for same-device restores.
+    put("photoPath", photoPath)
     put("dateKey", dateKey)
 }
 
@@ -141,6 +145,7 @@ private fun JSONObject.toCompletion(): HabitCompletion = HabitCompletion(
     habitId = getLong("habitId"),
     completedAt = Date(optLong("completedAt", System.currentTimeMillis())),
     notes = optStringOrNull("notes"),
+    photoPath = optStringOrNull("photoPath"),
     dateKey = getString("dateKey")
 )
 

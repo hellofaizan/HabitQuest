@@ -20,6 +20,7 @@ interface HabitManagementRepository {
     suspend fun completeHabit(habitId: Long, notes: String? = null): CompleteHabitOutcome
     suspend fun uncompleteHabit(habitId: Long, dateKey: String): Boolean
     suspend fun updateCompletionNote(habitId: Long, dateKey: String, note: String?): Boolean
+    suspend fun updateCompletionPhoto(habitId: Long, dateKey: String, photoPath: String?): Boolean
     suspend fun freezeStreak(habitId: Long): FreezeStreakOutcome
     suspend fun getHabitWithCompletions(habitId: Long): HabitWithCompletions?
     suspend fun getHabitsWithCompletionStatus(dateKey: String): List<HabitWithCompletionStatus>

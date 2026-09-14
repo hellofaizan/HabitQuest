@@ -97,6 +97,16 @@ class HabitManagementRepositoryImpl(
         }
     }
 
+    override suspend fun updateCompletionPhoto(habitId: Long, dateKey: String, photoPath: String?): Boolean {
+        return try {
+            val completion = habitCompletionRepository.getCompletionForDate(habitId, dateKey) ?: return false
+            habitCompletionRepository.updateCompletion(completion.copy(photoPath = photoPath))
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     override suspend fun freezeStreak(habitId: Long): FreezeStreakOutcome {
         return try {
             database.withTransaction {

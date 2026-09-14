@@ -28,6 +28,9 @@ data class HabitCompletion(
 
     val completedAt: Date = Date(),
     val notes: String? = null,
+    // Absolute path to a copy of the picked image under the app's private files dir; null if
+    // no photo is attached. See utils/PhotoUtils.kt for how it's written/cleaned up.
+    val photoPath: String? = null,
 
     val dateKey: String // YYYY-MM-DD format
 ) 
