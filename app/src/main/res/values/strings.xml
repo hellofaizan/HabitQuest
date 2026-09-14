@@ -1,5 +1,5 @@
 <resources>
     <string name="app_name">Habit Quest</string>
     <string name="widget_3day_label">Habit Quest: Weekly Streak</string>
-    <string name="widget_month_label">Habit Quest: Progress Graph</string>
+    <string name="widget_month_label">Habit Quest: Year Graph</string>
 </resources>

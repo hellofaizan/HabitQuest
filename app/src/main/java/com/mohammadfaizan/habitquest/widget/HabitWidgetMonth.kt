@@ -1,6 +1,7 @@
 package com.mohammadfaizan.habitquest.widget
 
 import android.content.Context
+import android.graphics.Bitmap
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -14,14 +15,17 @@ import androidx.core.graphics.toColorInt
 import androidx.datastore.preferences.core.Preferences
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
+import androidx.glance.Image
+import androidx.glance.ImageProvider
+import androidx.glance.LocalSize
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.provideContent
-import androidx.glance.background
 import androidx.glance.currentState
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
@@ -37,20 +41,21 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 
-// Same 7-rows-per-column (weekday x week) layout ContributionGraph uses in-app, but with far
-// fewer weeks — a 182-day (26-column) grid rendered as a garbled, truncated ~4x10 grid on a
-// real device, almost certainly a RemoteViews view-count limit (182 cells, each with its own
-// background/corner-radius view, plus an earlier 28-cell version that was already only
-// partially rendering). 5 weeks keeps the "graph" feel at a size intended to render reliably;
-// if it still truncates on-device this needs to drop further, or move to per-week summary
-// cells instead of one cell per day.
+// Same 7-rows-per-column (weekday x week) layout ContributionGraph uses in-app, but covering a
+// full year (53 weeks fully covers 365 days) instead of the app's 182-day window.
 private const val GRAPH_ROWS = 7
-private const val GRAPH_COLUMNS = 5
-private const val GRAPH_WIDGET_DAYS = GRAPH_ROWS * GRAPH_COLUMNS
+private const val GRAPH_COLUMNS = 53
+private const val GRAPH_WIDGET_DAYS = 365
+private const val GRAPH_GAP_DP = 1.5f
 
 class HabitWidgetMonth : GlanceAppWidget() {
 
-    // See HabitWidget3Day for why this is read reactively via currentState() instead of
+    // Lets LocalSize.current reflect the widget's actual current size (rather than one fixed
+    // layout) so the grid bitmap is rendered to fill however big this instance is placed —
+    // needed since the grid is drawn to a bitmap sized in code, not laid out by RemoteViews.
+    override val sizeMode: SizeMode = SizeMode.Exact
+
+    // See HabitWidget3Day for why state is read reactively via currentState() instead of
     // fetched once up front.
     override val stateDefinition: GlanceStateDefinition<*> = PreferencesGlanceStateDefinition
 
@@ -58,19 +63,43 @@ class HabitWidgetMonth : GlanceAppWidget() {
         provideContent {
             val prefs = currentState<Preferences>()
             val habitId = prefs[WidgetPrefs.HABIT_ID]
+            val availableWidthDp = LocalSize.current.width.value
 
             var data by remember { mutableStateOf<HabitWidgetData?>(null) }
-            LaunchedEffect(habitId) {
-                data = habitId?.let { loadHabitWidgetData(context, it, days = GRAPH_WIDGET_DAYS) }
+            var graphBitmap by remember { mutableStateOf<Bitmap?>(null) }
+            var graphHeightDp by remember { mutableStateOf(0f) }
+
+            LaunchedEffect(habitId, availableWidthDp) {
+                val loaded = habitId?.let { loadHabitWidgetData(context, it, days = GRAPH_WIDGET_DAYS) }
+                data = loaded
+                if (loaded != null) {
+                    // Grid card padding is 14dp a side (see WidgetCard); the rest of the
+                    // available width is the grid's budget, divided evenly across 53 columns.
+                    val gridWidthDp = (availableWidthDp - 28f).coerceAtLeast(GRAPH_COLUMNS * 2f)
+                    val cellSizeDp = (gridWidthDp - (GRAPH_COLUMNS - 1) * GRAPH_GAP_DP) / GRAPH_COLUMNS
+                    val density = context.resources.displayMetrics.density
+                    graphHeightDp = GRAPH_ROWS * cellSizeDp + (GRAPH_ROWS - 1) * GRAPH_GAP_DP
+                    graphBitmap = renderDayGridBitmap(
+                        days = loaded.days,
+                        targetCount = loaded.targetCount,
+                        habitColor = Color(loaded.colorHex.toColorInt()),
+                        rows = GRAPH_ROWS,
+                        columns = GRAPH_COLUMNS,
+                        cellSizePx = (cellSizeDp * density).toInt(),
+                        gapPx = (GRAPH_GAP_DP * density).toInt()
+                    )
+                } else {
+                    graphBitmap = null
+                }
             }
 
-            HabitWidgetGraphContent(data)
+            HabitWidgetGraphContent(data, graphBitmap, graphHeightDp)
         }
     }
 }
 
 @Composable
-private fun HabitWidgetGraphContent(data: HabitWidgetData?) {
+private fun HabitWidgetGraphContent(data: HabitWidgetData?, graphBitmap: Bitmap?, graphHeightDp: Float) {
     if (data == null) {
         WidgetCard(habitColor = WidgetMutedCell) {
             Box(modifier = GlanceModifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -108,23 +137,12 @@ private fun HabitWidgetGraphContent(data: HabitWidgetData?) {
 
             Spacer(modifier = GlanceModifier.height(10.dp))
 
-            // Column-major, same mapping as ContributionGraph: each column is one week,
-            // each row one weekday, oldest week on the left.
-            for (row in 0 until GRAPH_ROWS) {
-                Row(modifier = GlanceModifier.fillMaxWidth()) {
-                    for (col in 0 until GRAPH_COLUMNS) {
-                        val dayIndex = row + col * GRAPH_ROWS
-                        WidgetDayCell(
-                            day = data.days.getOrNull(dayIndex),
-                            targetCount = data.targetCount,
-                            habitColor = habitColor,
-                            cellHeight = 16.dp
-                        )
-                    }
-                }
-                if (row != GRAPH_ROWS - 1) {
-                    Spacer(modifier = GlanceModifier.height(2.dp))
-                }
+            if (graphBitmap != null) {
+                Image(
+                    provider = ImageProvider(graphBitmap),
+                    contentDescription = "Progress graph",
+                    modifier = GlanceModifier.fillMaxWidth().height(graphHeightDp.dp)
+                )
             }
 
             Spacer(modifier = GlanceModifier.height(10.dp))
