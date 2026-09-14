@@ -81,4 +81,8 @@ dependencies {
     // WorkManager for background tasks and notifications
     implementation(libs.androidx.work.runtime.ktx)
 
+    // Glance for home screen widgets (Compose-style API, matches the rest of the app)
+    implementation(libs.androidx.glance.appwidget)
+    implementation(libs.androidx.glance.material3)
+
 }
