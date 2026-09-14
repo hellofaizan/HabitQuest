@@ -51,6 +51,7 @@ import com.mohammadfaizan.habitquest.ui.viewmodel.HabitCompletionInfo
 import com.mohammadfaizan.habitquest.ui.viewmodel.HabitViewModel
 import com.mohammadfaizan.habitquest.utils.Achievements
 import com.mohammadfaizan.habitquest.utils.DateUtils
+import com.mohammadfaizan.habitquest.widget.HabitWidgetUpdater
 
 @Composable
 fun HomeScreen(
@@ -112,6 +113,13 @@ fun HomeScreen(
                     }
                     Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                 }
+                else -> {}
+            }
+            when (action.type) {
+                HabitActionType.COMPLETE_HABIT,
+                HabitActionType.UNCOMPLETE_HABIT,
+                HabitActionType.COMPLETE_ALL_HABITS,
+                HabitActionType.FREEZE_STREAK -> HabitWidgetUpdater.updateAll(context)
                 else -> {}
             }
             habitViewModel.clearActions()
