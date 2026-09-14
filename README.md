@@ -47,7 +47,7 @@ A beautiful and intuitive habit tracking app built with Jetpack Compose. Track y
 - [x] Quick add common habits via Habit templates/presets
 - [x] Onboarding tips/tutorial for first-time users
 - [x] Custom icon picker for habits (emoji-based, shown on habit cards)
-- [ ] Streak freeze feature (allow skipping days without breaking streak)
+- [x] Streak freeze feature (allow skipping days without breaking streak)
 
 ### Achievements & Motivation
 - [x] Achievement badges/milestones system (7/30/100/365-day streaks, 10/50/100/500 completions)

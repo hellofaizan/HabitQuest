@@ -3,6 +3,7 @@ package com.mohammadfaizan.habitquest.data.repository
 import com.mohammadfaizan.habitquest.data.local.AppDatabase
 import com.mohammadfaizan.habitquest.data.local.HabitCompletion
 import com.mohammadfaizan.habitquest.domain.repository.CompleteHabitOutcome
+import com.mohammadfaizan.habitquest.domain.repository.FreezeStreakOutcome
 import com.mohammadfaizan.habitquest.domain.repository.HabitCompletionRepository
 import com.mohammadfaizan.habitquest.domain.repository.HabitManagementRepository
 import com.mohammadfaizan.habitquest.domain.repository.HabitRepository
@@ -93,6 +94,35 @@ class HabitManagementRepositoryImpl(
             true
         } catch (e: Exception) {
             false
+        }
+    }
+
+    override suspend fun freezeStreak(habitId: Long): FreezeStreakOutcome {
+        return try {
+            database.withTransaction {
+                val habit = habitRepository.getHabitById(habitId)
+                    ?: return@withTransaction FreezeStreakOutcome.HABIT_NOT_FOUND
+
+                if (habit.freezesAvailable <= 0) {
+                    return@withTransaction FreezeStreakOutcome.NO_FREEZES_LEFT
+                }
+
+                // Protects today and tomorrow with a single freeze — covers "I might not get to
+                // this today" and "I know tomorrow's busy" in one action.
+                val todayKey = DateUtils.getCurrentDateKey()
+                val tomorrowKey = DateUtils.getDateKeyForDaysFromNow(1)
+                habitCompletionRepository.freezeDate(habitId, todayKey)
+                habitCompletionRepository.freezeDate(habitId, tomorrowKey)
+                habitRepository.updateHabit(habit.copy(freezesAvailable = habit.freezesAvailable - 1))
+
+                FreezeStreakOutcome.FROZEN
+            }.also { outcome ->
+                if (outcome == FreezeStreakOutcome.FROZEN) {
+                    calculateAndUpdateStreak(habitId)
+                }
+            }
+        } catch (e: Exception) {
+            FreezeStreakOutcome.HABIT_NOT_FOUND
         }
     }
 

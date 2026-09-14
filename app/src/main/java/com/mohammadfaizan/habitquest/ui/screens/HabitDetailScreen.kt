@@ -43,6 +43,7 @@ import com.mohammadfaizan.habitquest.data.local.Habit
 import com.mohammadfaizan.habitquest.data.local.HabitCompletion
 import com.mohammadfaizan.habitquest.domain.repository.HabitStats
 import com.mohammadfaizan.habitquest.ui.components.ContributionGraph
+import com.mohammadfaizan.habitquest.ui.components.FrozenDayColor
 import com.mohammadfaizan.habitquest.ui.components.ShareableProgressCard
 import com.mohammadfaizan.habitquest.utils.Achievements
 import com.mohammadfaizan.habitquest.utils.shareBitmap
@@ -53,9 +54,11 @@ import kotlin.math.roundToInt
 fun HabitDetailScreen(
     habit: Habit,
     completions: List<HabitCompletion>,
+    freezeDates: List<String> = emptyList(),
     stats: HabitStats?,
     onBackClick: () -> Unit,
     onEditClick: () -> Unit,
+    onFreezeStreakClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val habitColor = Color(habit.color.toColorInt())
@@ -215,8 +218,52 @@ fun HabitDetailScreen(
         ContributionGraph(
             habit = habit,
             completions = completions,
+            freezeDates = freezeDates,
             modifier = Modifier.fillMaxWidth()
         )
+
+        Spacer(modifier = Modifier.height(28.dp))
+
+        Text(
+            text = "Streak Freeze",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .background(FrozenDayColor.copy(alpha = 0.15f))
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = "🧊", fontSize = 22.sp)
+            Spacer(modifier = Modifier.width(10.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Freeze today & tomorrow",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "${habit.freezesAvailable} freeze${if (habit.freezesAvailable == 1) "" else "s"} left · protects your streak if you miss a day",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(
+                onClick = onFreezeStreakClick,
+                enabled = habit.freezesAvailable > 0
+            ) {
+                Text("Freeze")
+            }
+        }
 
         Spacer(modifier = Modifier.height(28.dp))
 
@@ -245,6 +292,7 @@ fun HabitDetailScreen(
             ShareableProgressCard(
                 habit = habit,
                 completions = completions,
+                freezeDates = freezeDates,
                 modifier = Modifier.fillMaxWidth()
             )
         }

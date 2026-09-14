@@ -56,4 +56,9 @@ interface HabitCompletionRepository {
     // Analytics
     suspend fun getTotalCompletionsCount(): Int
     suspend fun getCompletionCountsByDayOfWeek(): List<DayOfWeekCount>
+
+    // Streak freezes — a frozen day counts toward streak continuity without a real completion
+    suspend fun freezeDate(habitId: Long, dateKey: String)
+    suspend fun getFreezeDates(habitId: Long): List<String>
+    suspend fun isFrozen(habitId: Long, dateKey: String): Boolean
 } 

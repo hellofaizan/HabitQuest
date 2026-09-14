@@ -67,6 +67,7 @@ import kotlin.random.Random
 fun HabitCard(
     habit: Habit,
     completions: List<HabitCompletion> = emptyList(),
+    freezeDates: List<String> = emptyList(),
     onHabitClick: () -> Unit = {},
     onHabitLongClick: () -> Unit = {},
     onCompleteClick: () -> Unit = {},
@@ -292,6 +293,7 @@ fun HabitCard(
             ContributionGraph(
                 habit = habit,
                 completions = completions,
+                freezeDates = freezeDates,
                 modifier = Modifier.fillMaxWidth()
             )
 

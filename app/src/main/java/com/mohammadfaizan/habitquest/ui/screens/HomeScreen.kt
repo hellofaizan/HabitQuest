@@ -81,6 +81,15 @@ fun HomeScreen(
                     }
                     Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                 }
+                HabitActionType.FREEZE_STREAK -> {
+                    val result = action.data as? com.mohammadfaizan.habitquest.ui.viewmodel.FreezeStreakActionResult
+                    val message = if (result?.success == true) {
+                        "🧊 Streak frozen for today & tomorrow"
+                    } else {
+                        result?.error ?: "Couldn't freeze streak"
+                    }
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                }
                 else -> {}
             }
             habitViewModel.clearActions()
@@ -153,6 +162,7 @@ fun HomeScreen(
                     HabitListContent(
                         habits = visibleHabits,
                         habitCompletions = uiState.habitCompletions,
+                        habitFreezeDates = uiState.habitFreezeDates,
                         onHabitClick = onHabitClick,
                         onHabitLongClick = onHabitLongClick,
                         onCompleteClick = { habit ->
@@ -234,6 +244,7 @@ private fun HabitSearchAndFilter(
 private fun HabitListContent(
     habits: List<Habit>,
     habitCompletions: Map<Long, List<HabitCompletion>>,
+    habitFreezeDates: Map<Long, List<String>> = emptyMap(),
     onHabitClick: (Habit) -> Unit,
     onHabitLongClick: (Habit) -> Unit,
     onCompleteClick: (Habit) -> Unit,
@@ -250,6 +261,7 @@ private fun HabitListContent(
             HabitCard(
                 habit = habit,
                 completions = habitCompletions[habit.id] ?: emptyList(),
+                freezeDates = habitFreezeDates[habit.id] ?: emptyList(),
                 onHabitClick = { onHabitClick(habit) },
                 onHabitLongClick = { onHabitLongClick(habit) },
                 onCompleteClick = { onCompleteClick(habit) },

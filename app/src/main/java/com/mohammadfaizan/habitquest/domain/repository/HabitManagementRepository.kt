@@ -9,11 +9,18 @@ enum class CompleteHabitOutcome {
     COMPLETED
 }
 
+enum class FreezeStreakOutcome {
+    HABIT_NOT_FOUND,
+    NO_FREEZES_LEFT,
+    FROZEN
+}
+
 interface HabitManagementRepository {
 
     suspend fun completeHabit(habitId: Long, notes: String? = null): CompleteHabitOutcome
     suspend fun uncompleteHabit(habitId: Long, dateKey: String): Boolean
     suspend fun updateCompletionNote(habitId: Long, dateKey: String, note: String?): Boolean
+    suspend fun freezeStreak(habitId: Long): FreezeStreakOutcome
     suspend fun getHabitWithCompletions(habitId: Long): HabitWithCompletions?
     suspend fun getHabitsWithCompletionStatus(dateKey: String): List<HabitWithCompletionStatus>
     suspend fun calculateAndUpdateStreak(habitId: Long): Int

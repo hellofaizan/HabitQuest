@@ -23,6 +23,12 @@ object DateUtils {
         return dateFormat.format(calendar.time)
     }
 
+    fun getDateKeyForDaysFromNow(days: Int): String {
+        val calendar = Calendar.getInstance()
+        calendar.add(Calendar.DAY_OF_YEAR, days)
+        return dateFormat.format(calendar.time)
+    }
+
     fun isSameDay(dateKey1: String, dateKey2: String): Boolean {
         return dateKey1 == dateKey2
     }

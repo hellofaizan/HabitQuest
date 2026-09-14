@@ -45,6 +45,7 @@ import com.mohammadfaizan.habitquest.domain.usecase.AddHabitUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.ArchiveHabitUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.CompleteHabitUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.DeleteHabitUseCase
+import com.mohammadfaizan.habitquest.domain.usecase.FreezeStreakUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.GenerateRandomDataUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.GetAnalyticsUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.GetHabitsUseCase
@@ -113,7 +114,7 @@ class MainActivity : ComponentActivity() {
                         remember { PreferencesRepositoryImpl(db.appPreferencesDao()) }
                     val habitRepo = remember { HabitRepositoryImpl(db.habitDao()) }
                     val habitCompletionRepo =
-                        remember { HabitCompletionRepositoryImpl(db.habitCompletionDao()) }
+                        remember { HabitCompletionRepositoryImpl(db.habitCompletionDao(), db.habitFreezeDao()) }
                     val habitManagementRepo =
                         remember { HabitManagementRepositoryImpl(habitRepo, habitCompletionRepo, db) }
                     val addHabitUseCase = remember { AddHabitUseCase(habitRepo) }
@@ -134,7 +135,8 @@ class MainActivity : ComponentActivity() {
                             habitManagementRepo,
                             ReorderHabitsUseCase(habitRepo),
                             UncompleteHabitUseCase(habitManagementRepo),
-                            ArchiveHabitUseCase(habitRepo)
+                            ArchiveHabitUseCase(habitRepo),
+                            FreezeStreakUseCase(habitManagementRepo)
                         )
                     }
                     val habitDetailViewModel = remember {
@@ -551,17 +553,24 @@ class MainActivity : ComponentActivity() {
                                         } else {
                                             val detailUiState by habitViewModel.uiState.collectAsState()
                                             val stats by habitDetailViewModel.stats.collectAsState()
+                                            // Re-derive from the live list so streak/freeze count reflect
+                                            // reactively (e.g. right after freezing), not a stale snapshot.
+                                            val liveHabit = detailUiState.habits.find { it.id == habit.id } ?: habit
 
                                             HabitDetailScreen(
-                                                habit = habit,
+                                                habit = liveHabit,
                                                 completions = detailUiState.habitCompletions[habit.id] ?: emptyList(),
+                                                freezeDates = detailUiState.habitFreezeDates[habit.id] ?: emptyList(),
                                                 stats = stats,
                                                 onBackClick = {
                                                     navController.popBackStack()
                                                 },
                                                 onEditClick = {
                                                     navController.popBackStack()
-                                                    openHabitEditor(habit)
+                                                    openHabitEditor(liveHabit)
+                                                },
+                                                onFreezeStreakClick = {
+                                                    habitViewModel.freezeStreak(habit.id)
                                                 },
                                                 modifier = Modifier.padding(innerPadding)
                                             )

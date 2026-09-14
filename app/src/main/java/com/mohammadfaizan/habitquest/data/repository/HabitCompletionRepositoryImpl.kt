@@ -4,6 +4,8 @@ import com.mohammadfaizan.habitquest.data.local.CompletionPattern
 import com.mohammadfaizan.habitquest.data.local.DayOfWeekCount
 import com.mohammadfaizan.habitquest.data.local.HabitCompletion
 import com.mohammadfaizan.habitquest.data.local.HabitCompletionDao
+import com.mohammadfaizan.habitquest.data.local.HabitFreeze
+import com.mohammadfaizan.habitquest.data.local.HabitFreezeDao
 import com.mohammadfaizan.habitquest.domain.repository.HabitCompletionRepository
 import kotlinx.coroutines.flow.Flow
 import java.text.SimpleDateFormat
@@ -12,7 +14,8 @@ import java.util.Date
 import java.util.Locale
 
 class HabitCompletionRepositoryImpl(
-    private val habitCompletionDao: HabitCompletionDao
+    private val habitCompletionDao: HabitCompletionDao,
+    private val habitFreezeDao: HabitFreezeDao
 ) : HabitCompletionRepository {
 
     // Basic CRUD Operations
@@ -79,28 +82,33 @@ class HabitCompletionRepositoryImpl(
     override suspend fun getCurrentStreak(habitId: Long): Int {
         // Get all completion dates sorted descending
         val completionDates = habitCompletionDao.getCompletionDates(habitId)
-        if (completionDates.isEmpty()) return 0
-        
+        val freezeDates = habitFreezeDao.getFreezeDates(habitId)
+        if (completionDates.isEmpty() && freezeDates.isEmpty()) return 0
+
         val calendar = Calendar.getInstance()
         val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         var streak = 0
         var expectedDate = dateFormat.format(calendar.time) // Today
-        
-        // Check if today is completed, if not start from yesterday
-        val todayCompleted = completionDates.contains(expectedDate)
-        if (!todayCompleted) {
+
+        // A frozen day counts the same as a completed one for continuity purposes.
+        val completionSet = completionDates.toSet()
+        val freezeSet = freezeDates.toSet()
+        val coveredDates = completionSet + freezeSet
+
+        // Check if today is covered, if not start from yesterday
+        val todayCovered = coveredDates.contains(expectedDate)
+        if (!todayCovered) {
             calendar.add(Calendar.DAY_OF_YEAR, -1)
             expectedDate = dateFormat.format(calendar.time)
         }
-        
+
         // Count consecutive days backwards
-        val completionSet = completionDates.toSet()
-        while (completionSet.contains(expectedDate)) {
+        while (coveredDates.contains(expectedDate)) {
             streak++
             calendar.add(Calendar.DAY_OF_YEAR, -1)
             expectedDate = dateFormat.format(calendar.time)
         }
-        
+
         return streak
     }
     
@@ -183,5 +191,18 @@ class HabitCompletionRepositoryImpl(
 
     override suspend fun getCompletionCountsByDayOfWeek(): List<DayOfWeekCount> {
         return habitCompletionDao.getCompletionCountsByDayOfWeek()
+    }
+
+    // Streak freezes
+    override suspend fun freezeDate(habitId: Long, dateKey: String) {
+        habitFreezeDao.insertFreeze(HabitFreeze(habitId = habitId, dateKey = dateKey))
+    }
+
+    override suspend fun getFreezeDates(habitId: Long): List<String> {
+        return habitFreezeDao.getFreezeDates(habitId)
+    }
+
+    override suspend fun isFrozen(habitId: Long, dateKey: String): Boolean {
+        return habitFreezeDao.isFrozen(habitId, dateKey) > 0
     }
 }

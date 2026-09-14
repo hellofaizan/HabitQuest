@@ -23,6 +23,7 @@ data class Habit(
     val currentStreak: Int = 0,
     val longestStreak: Int = 0,
     val totalCompletion: Int = 0,
+    val freezesAvailable: Int = 3,
     val createdAt: Date = Date(),
     val updatedAt: Date = Date(),
 

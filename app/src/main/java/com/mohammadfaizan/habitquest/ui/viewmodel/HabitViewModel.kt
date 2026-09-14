@@ -36,6 +36,7 @@ data class HabitUiState(
     val habits: List<Habit> = emptyList(),
     val habitsWithCompletionStatus: List<HabitWithCompletionStatus> = emptyList(),
     val habitCompletions: Map<Long, List<HabitCompletion>> = emptyMap(),
+    val habitFreezeDates: Map<Long, List<String>> = emptyMap(),
     val weeklyCompletions: Map<String, List<HabitCompletion>> = emptyMap(),
     val error: String? = null,
     val selectedHabit: Habit? = null,
@@ -52,11 +53,17 @@ data class HabitCompletionInfo(
     val milestoneReached: Int? = null
 )
 
+data class FreezeStreakActionResult(
+    val success: Boolean,
+    val error: String? = null
+)
+
 enum class HabitActionType {
     ADD_HABIT,
     COMPLETE_HABIT,
     COMPLETE_ALL_HABITS,
     UNCOMPLETE_HABIT,
+    FREEZE_STREAK,
     DELETE_HABIT,
     REFRESH_HABITS,
     SELECT_HABIT,
@@ -76,7 +83,8 @@ class HabitViewModel @Inject constructor(
     private val habitManagementRepository: HabitManagementRepository,
     private val reorderHabitsUseCase: ReorderHabitsUseCase,
     private val uncompleteHabitUseCase: com.mohammadfaizan.habitquest.domain.usecase.UncompleteHabitUseCase,
-    private val archiveHabitUseCase: com.mohammadfaizan.habitquest.domain.usecase.ArchiveHabitUseCase
+    private val archiveHabitUseCase: com.mohammadfaizan.habitquest.domain.usecase.ArchiveHabitUseCase,
+    private val freezeStreakUseCase: com.mohammadfaizan.habitquest.domain.usecase.FreezeStreakUseCase
 ) : ViewModel() {
 
     // Observe habits Flow directly for instant loading
@@ -413,6 +421,27 @@ class HabitViewModel @Inject constructor(
         }
     }
 
+    fun freezeStreak(habitId: Long) {
+        viewModelScope.launch {
+            try {
+                val result = freezeStreakUseCase(habitId)
+                if (result.success) {
+                    // habitsFlow reflects the updated freezesAvailable/streak reactively; also
+                    // refresh the freeze-dates map so the icy highlight shows immediately.
+                    loadHabitCompletions()
+                }
+                _actions.value = HabitAction(
+                    HabitActionType.FREEZE_STREAK,
+                    FreezeStreakActionResult(success = result.success, error = result.error)
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    error = "Failed to freeze streak: ${e.message}"
+                )
+            }
+        }
+    }
+
     fun archiveHabit(habitId: Long) {
         viewModelScope.launch {
             try {
@@ -483,8 +512,15 @@ class HabitViewModel @Inject constructor(
                     }
                 }
 
+                // No batch query for freezes (they're rare — a handful per habit at most),
+                // so a small per-habit query here is fine rather than adding one.
+                val freezeDatesMap = habitIds.associateWith { habitId ->
+                    habitCompletionRepository.getFreezeDates(habitId)
+                }
+
                 _uiState.value = _uiState.value.copy(
                     habitCompletions = completionsMap,
+                    habitFreezeDates = freezeDatesMap,
                     dataLoaded = true
                 )
 

@@ -27,13 +27,15 @@ import java.util.Locale
 fun ContributionGraph(
     habit: Habit,
     completions: List<HabitCompletion>,
+    freezeDates: List<String> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     val habitColor = Color(habit.color.toColorInt())
     val graphDays = 182
     // 182 days (~6 months); reuses one Calendar/formatter instead of allocating 182 of each.
-    val days = remember(habit.id, completions) {
+    val days = remember(habit.id, completions, freezeDates) {
         val completionMap = completions.groupBy { it.dateKey }
+        val freezeSet = freezeDates.toSet()
         val calendar = Calendar.getInstance()
         val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
@@ -45,7 +47,8 @@ fun ContributionGraph(
             DayData(
                 dateKey = dateKey,
                 completionCount = dayCompletions.size,
-                targetCount = habit.targetCount
+                targetCount = habit.targetCount,
+                isFrozen = dateKey in freezeSet
             )
         }.reversed()
     }
@@ -60,7 +63,7 @@ fun ContributionGraph(
                 if (dayIndex < days.size) {
                     days[dayIndex]
                 } else {
-                    DayData("", 0, habit.targetCount)
+                    DayData("", 0, habit.targetCount, isFrozen = false)
                 }
             }
         }
@@ -95,6 +98,11 @@ fun ContributionGraph(
     }
 }
 
+// A fixed icy blue rather than a habit-color tint — a frozen day is a distinct *state*
+// (protected, not actually done), so it should read the same way across every habit.
+// Not private: HabitDetailScreen reuses it for the freeze-streak card so the color stays consistent.
+val FrozenDayColor = Color(0xFF7EC8E3)
+
 @Composable
 fun ContributionDay(
     day: DayData,
@@ -110,12 +118,20 @@ fun ContributionDay(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(2.dp))
-            .border(1.dp, habitColor.copy(alpha = 0.03f), RoundedCornerShape(2.dp))
-            .background(
-                if (day.completionCount > 0) {
-                    habitColor.copy(alpha = alpha)
+            .border(
+                width = 1.dp,
+                color = if (day.isFrozen && day.completionCount == 0) {
+                    FrozenDayColor.copy(alpha = 0.5f)
                 } else {
-                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    habitColor.copy(alpha = 0.03f)
+                },
+                shape = RoundedCornerShape(2.dp)
+            )
+            .background(
+                when {
+                    day.completionCount > 0 -> habitColor.copy(alpha = alpha)
+                    day.isFrozen -> FrozenDayColor.copy(alpha = 0.55f)
+                    else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                 }
             )
     )
@@ -124,5 +140,6 @@ fun ContributionDay(
 data class DayData(
     val dateKey: String,
     val completionCount: Int,
-    val targetCount: Int
+    val targetCount: Int,
+    val isFrozen: Boolean = false
 )

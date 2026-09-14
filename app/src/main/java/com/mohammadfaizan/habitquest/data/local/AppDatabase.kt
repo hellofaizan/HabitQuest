@@ -12,15 +12,17 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     entities = [
         AppPreferences::class,
         Habit::class,
-        HabitCompletion::class
+        HabitCompletion::class,
+        HabitFreeze::class
     ],
-    version = 3
+    version = 4
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun appPreferencesDao(): AppPreferencesDao
     abstract fun habitDao(): HabitDao
     abstract fun habitCompletionDao(): HabitCompletionDao
+    abstract fun habitFreezeDao(): HabitFreezeDao
 
     companion object {
         @Volatile
@@ -39,13 +41,32 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE habits ADD COLUMN freezesAvailable INTEGER NOT NULL DEFAULT 3")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `habit_freezes` (" +
+                        "`id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, " +
+                        "`habitId` INTEGER NOT NULL, " +
+                        "`dateKey` TEXT NOT NULL, " +
+                        "FOREIGN KEY(`habitId`) REFERENCES `habits`(`id`) ON DELETE CASCADE)"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_habit_freezes_habitId` ON `habit_freezes` (`habitId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_habit_freezes_dateKey` ON `habit_freezes` (`dateKey`)")
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_habit_freezes_habitId_dateKey` " +
+                        "ON `habit_freezes` (`habitId`, `dateKey`)"
+                )
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
                     "app-db"
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { instance = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build().also { instance = it }
             }
         }
     }

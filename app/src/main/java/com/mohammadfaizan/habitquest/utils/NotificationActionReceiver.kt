@@ -26,7 +26,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 val db = AppDatabase.getInstance(context)
 
                 val habitRepo = HabitRepositoryImpl(db.habitDao())
-                val habitCompletionRepo = HabitCompletionRepositoryImpl(db.habitCompletionDao())
+                val habitCompletionRepo = HabitCompletionRepositoryImpl(db.habitCompletionDao(), db.habitFreezeDao())
                 val habitManagementRepo = HabitManagementRepositoryImpl(habitRepo, habitCompletionRepo, db)
                 val completeHabitUseCase = CompleteHabitUseCase(habitManagementRepo)
 

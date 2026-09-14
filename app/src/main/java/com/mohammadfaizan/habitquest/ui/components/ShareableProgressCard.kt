@@ -35,6 +35,7 @@ import com.mohammadfaizan.habitquest.data.local.HabitCompletion
 fun ShareableProgressCard(
     habit: Habit,
     completions: List<HabitCompletion>,
+    freezeDates: List<String> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     val habitColor = Color(habit.color.toColorInt())
@@ -83,6 +84,7 @@ fun ShareableProgressCard(
         ContributionGraph(
             habit = habit,
             completions = completions,
+            freezeDates = freezeDates,
             modifier = Modifier.fillMaxWidth()
         )
 
