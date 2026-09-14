@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Settings
@@ -68,6 +69,7 @@ fun SettingsDrawerContent(
     onNavigateToGeneral: () -> Unit,
     onNavigateToReorder: () -> Unit = {},
     onNavigateToAnalytics: () -> Unit = {},
+    onNavigateToCalendarOverview: () -> Unit = {},
     onNavigateToArchived: () -> Unit = {},
     onNavigateToBackupRestore: () -> Unit = {},
     habitViewModel: com.mohammadfaizan.habitquest.ui.viewmodel.HabitViewModel? = null,
@@ -144,6 +146,17 @@ fun SettingsDrawerContent(
                             hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                         }
                         onNavigateToAnalytics()
+                    },
+                    MenuItem(
+                        title = "Calendar Overview",
+                        icon = { Icon(Icons.Default.DateRange, contentDescription = null) }
+                    ) {
+                        try {
+                            view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
+                        } catch (e: Exception) {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+                        onNavigateToCalendarOverview()
                     },
                     MenuItem(
                         title = "Archived Habits",

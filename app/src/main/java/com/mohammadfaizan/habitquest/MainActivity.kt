@@ -51,6 +51,7 @@ import com.mohammadfaizan.habitquest.domain.usecase.ExportCsvUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.FreezeStreakUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.GenerateRandomDataUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.GetAnalyticsUseCase
+import com.mohammadfaizan.habitquest.domain.usecase.GetCalendarHeatmapUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.GetHabitsUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.GetHabitStatsUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.GetHabitsWithCompletionStatusUseCase
@@ -64,6 +65,7 @@ import com.mohammadfaizan.habitquest.ui.screens.AddHabitScreen
 import com.mohammadfaizan.habitquest.ui.screens.BackupRestoreScreen
 import com.mohammadfaizan.habitquest.ui.screens.GeneralSettingsScreen
 import com.mohammadfaizan.habitquest.ui.screens.AnalyticsScreen
+import com.mohammadfaizan.habitquest.ui.screens.CalendarOverviewScreen
 import com.mohammadfaizan.habitquest.ui.screens.ArchivedHabitsScreen
 import com.mohammadfaizan.habitquest.ui.screens.HabitDetailScreen
 import com.mohammadfaizan.habitquest.ui.screens.HomeScreen
@@ -77,6 +79,7 @@ import com.mohammadfaizan.habitquest.ui.viewmodel.AddHabitActionType
 import com.mohammadfaizan.habitquest.ui.viewmodel.AddHabitViewModel
 import com.mohammadfaizan.habitquest.ui.viewmodel.AVAILABLE_HABIT_ICONS
 import com.mohammadfaizan.habitquest.ui.viewmodel.AnalyticsViewModel
+import com.mohammadfaizan.habitquest.ui.viewmodel.CalendarOverviewViewModel
 import com.mohammadfaizan.habitquest.ui.viewmodel.BackupViewModel
 import com.mohammadfaizan.habitquest.ui.viewmodel.HabitDetailViewModel
 import com.mohammadfaizan.habitquest.ui.viewmodel.HabitViewModel
@@ -102,6 +105,7 @@ private object Routes {
     const val REORDER_HABITS = "reorder_habits"
     const val HABIT_DETAIL = "habit_detail"
     const val ANALYTICS = "analytics"
+    const val CALENDAR_OVERVIEW = "calendar_overview"
     const val ARCHIVED_HABITS = "archived_habits"
     const val BACKUP_RESTORE = "backup_restore"
 }
@@ -153,6 +157,12 @@ class MainActivity : ComponentActivity() {
                         AnalyticsViewModel(
                             GetAnalyticsUseCase(habitRepo, habitManagementRepo, habitCompletionRepo),
                             GetHabitStatsUseCase(habitManagementRepo)
+                        )
+                    }
+                    val calendarOverviewViewModel = remember {
+                        CalendarOverviewViewModel(
+                            habitRepo,
+                            GetCalendarHeatmapUseCase(habitRepo, habitCompletionRepo)
                         )
                     }
                     val backupRepo = remember {
@@ -351,6 +361,10 @@ class MainActivity : ComponentActivity() {
                                             onNavigateToAnalytics = {
                                                 scope.launch { drawerState.close() }
                                                 navController.navigate(Routes.ANALYTICS)
+                                            },
+                                            onNavigateToCalendarOverview = {
+                                                scope.launch { drawerState.close() }
+                                                navController.navigate(Routes.CALENDAR_OVERVIEW)
                                             },
                                             onNavigateToArchived = {
                                                 scope.launch { drawerState.close() }
@@ -616,6 +630,16 @@ class MainActivity : ComponentActivity() {
                                         }
                                         AnalyticsScreen(
                                             analyticsViewModel = analyticsViewModel,
+                                            onBackClick = {
+                                                navController.popBackStack()
+                                            },
+                                            modifier = Modifier.padding(innerPadding)
+                                        )
+                                    }
+
+                                    composable(Routes.CALENDAR_OVERVIEW) {
+                                        CalendarOverviewScreen(
+                                            viewModel = calendarOverviewViewModel,
                                             onBackClick = {
                                                 navController.popBackStack()
                                             },
