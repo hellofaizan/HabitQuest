@@ -23,14 +23,25 @@ interface HabitDao {
     @Query("SELECT * FROM habits WHERE id = :habitId")
     suspend fun getHabitById(habitId: Long): Habit?
 
+    // One-shot snapshot for backup export, as opposed to the live Flow queries above.
+    @Query("SELECT * FROM habits")
+    suspend fun getAllHabitsSnapshot(): List<Habit>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertHabit(habit: Habit): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertHabits(habits: List<Habit>)
 
     @Update
     suspend fun updateHabit(habit: Habit)
 
     @Delete
     suspend fun deleteHabit(habit: Habit)
+
+    // Backup restore replaces the whole table rather than merging with what's there.
+    @Query("DELETE FROM habits")
+    suspend fun deleteAllHabits()
 
     @Query("DELETE FROM habits WHERE id = :habitId")
     suspend fun deleteHabitById(habitId: Long)

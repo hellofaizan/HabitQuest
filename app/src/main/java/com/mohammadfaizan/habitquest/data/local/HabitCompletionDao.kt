@@ -25,6 +25,14 @@ interface HabitCompletionDao {
     @Delete
     suspend fun deleteCompletion(completion: HabitCompletion)
 
+    // One-shot snapshot for backup export.
+    @Query("SELECT * FROM habit_completions")
+    suspend fun getAllCompletionsSnapshot(): List<HabitCompletion>
+
+    // Backup restore replaces the whole table rather than merging with what's there.
+    @Query("DELETE FROM habit_completions")
+    suspend fun deleteAllCompletionsTable()
+
     // Query operations
     @Query("SELECT * FROM habit_completions WHERE habitId = :habitId ORDER BY completedAt DESC")
     fun getCompletionsForHabit(habitId: Long): Flow<List<HabitCompletion>>
