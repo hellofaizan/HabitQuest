@@ -3,23 +3,38 @@ package com.mohammadfaizan.habitquest
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.AnimatedVisibility
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.rememberDrawerState
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.room.Room
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import com.mohammadfaizan.habitquest.data.local.AppDatabase
 import com.mohammadfaizan.habitquest.data.local.Habit
 import com.mohammadfaizan.habitquest.data.repository.HabitCompletionRepositoryImpl
@@ -27,27 +42,43 @@ import com.mohammadfaizan.habitquest.data.repository.HabitManagementRepositoryIm
 import com.mohammadfaizan.habitquest.data.repository.HabitRepositoryImpl
 import com.mohammadfaizan.habitquest.domain.repository.PreferencesRepositoryImpl
 import com.mohammadfaizan.habitquest.domain.usecase.AddHabitUseCase
+import com.mohammadfaizan.habitquest.domain.usecase.ArchiveHabitUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.CompleteHabitUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.DeleteHabitUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.GenerateRandomDataUseCase
+import com.mohammadfaizan.habitquest.domain.usecase.GetAnalyticsUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.GetHabitsUseCase
+import com.mohammadfaizan.habitquest.domain.usecase.GetHabitStatsUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.GetHabitsWithCompletionStatusUseCase
+import com.mohammadfaizan.habitquest.domain.usecase.ReorderHabitsUseCase
+import com.mohammadfaizan.habitquest.domain.usecase.UncompleteHabitUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.UpdateHabitResult
 import com.mohammadfaizan.habitquest.domain.usecase.UpdateHabitUseCase
 import com.mohammadfaizan.habitquest.ui.components.TopAppBarComponent
 import com.mohammadfaizan.habitquest.ui.screens.AddHabitScreen
-import com.mohammadfaizan.habitquest.utils.HabitNotificationManager
-import com.mohammadfaizan.habitquest.utils.NotificationScheduler
-import com.mohammadfaizan.habitquest.utils.StreakResetManager
 import com.mohammadfaizan.habitquest.ui.screens.GeneralSettingsScreen
+import com.mohammadfaizan.habitquest.ui.screens.AnalyticsScreen
+import com.mohammadfaizan.habitquest.ui.screens.ArchivedHabitsScreen
+import com.mohammadfaizan.habitquest.ui.screens.HabitDetailScreen
 import com.mohammadfaizan.habitquest.ui.screens.HomeScreen
-import com.mohammadfaizan.habitquest.ui.screens.SettingsScreen
+import com.mohammadfaizan.habitquest.ui.screens.ProUpgradeSheet
+import com.mohammadfaizan.habitquest.ui.screens.ReorderHabitsScreen
+import com.mohammadfaizan.habitquest.ui.screens.SettingsDrawerContent
 import com.mohammadfaizan.habitquest.ui.screens.SplashScreen
 import com.mohammadfaizan.habitquest.ui.screens.onbording.OnboardingScreen
 import com.mohammadfaizan.habitquest.ui.theme.HabitQuestTheme
 import com.mohammadfaizan.habitquest.ui.viewmodel.AddHabitActionType
 import com.mohammadfaizan.habitquest.ui.viewmodel.AddHabitViewModel
+import com.mohammadfaizan.habitquest.ui.viewmodel.AVAILABLE_HABIT_ICONS
+import com.mohammadfaizan.habitquest.ui.viewmodel.AnalyticsViewModel
+import com.mohammadfaizan.habitquest.ui.viewmodel.HabitDetailViewModel
 import com.mohammadfaizan.habitquest.ui.viewmodel.HabitViewModel
+import com.mohammadfaizan.habitquest.utils.DateUtils
+import com.mohammadfaizan.habitquest.utils.HabitNotificationManager
+import com.mohammadfaizan.habitquest.utils.NotificationScheduler
+import com.mohammadfaizan.habitquest.utils.PermissionUtils
+import com.mohammadfaizan.habitquest.utils.StreakResetManager
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -55,6 +86,16 @@ sealed class AppState {
     object Splash : AppState()
     object Onboarding : AppState()
     object Main : AppState()
+}
+
+private object Routes {
+    const val HOME = "home"
+    const val ADD_HABIT = "add_habit"
+    const val GENERAL_SETTINGS = "general_settings"
+    const val REORDER_HABITS = "reorder_habits"
+    const val HABIT_DETAIL = "habit_detail"
+    const val ANALYTICS = "analytics"
+    const val ARCHIVED_HABITS = "archived_habits"
 }
 
 class MainActivity : ComponentActivity() {
@@ -66,13 +107,7 @@ class MainActivity : ComponentActivity() {
             HabitQuestTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     val context = this
-                    val db = remember {
-                        Room.databaseBuilder(
-                            context,
-                            AppDatabase::class.java,
-                            "app-db"
-                        ).build()
-                    }
+                    val db = remember { AppDatabase.getInstance(context) }
 
                     val preferencesRepo =
                         remember { PreferencesRepositoryImpl(db.appPreferencesDao()) }
@@ -80,7 +115,7 @@ class MainActivity : ComponentActivity() {
                     val habitCompletionRepo =
                         remember { HabitCompletionRepositoryImpl(db.habitCompletionDao()) }
                     val habitManagementRepo =
-                        remember { HabitManagementRepositoryImpl(habitRepo, habitCompletionRepo) }
+                        remember { HabitManagementRepositoryImpl(habitRepo, habitCompletionRepo, db) }
                     val addHabitUseCase = remember { AddHabitUseCase(habitRepo) }
                     val updateHabitUseCase = remember { UpdateHabitUseCase(habitRepo) }
 
@@ -96,28 +131,50 @@ class MainActivity : ComponentActivity() {
                             habitCompletionRepo,
                             habitRepo,
                             generateRandomDataUseCase,
-                            habitManagementRepo
+                            habitManagementRepo,
+                            ReorderHabitsUseCase(habitRepo),
+                            UncompleteHabitUseCase(habitManagementRepo),
+                            ArchiveHabitUseCase(habitRepo)
                         )
                     }
-                    
+                    val habitDetailViewModel = remember {
+                        HabitDetailViewModel(GetHabitStatsUseCase(habitManagementRepo))
+                    }
+                    val analyticsViewModel = remember {
+                        AnalyticsViewModel(
+                            GetAnalyticsUseCase(habitRepo, habitManagementRepo, habitCompletionRepo),
+                            GetHabitStatsUseCase(habitManagementRepo)
+                        )
+                    }
+
                     // Initialize notification channel
                     LaunchedEffect(Unit) {
                         HabitNotificationManager.createNotificationChannel(context)
                     }
-                    
+
+                    // Request POST_NOTIFICATIONS at runtime (required on Android 13+;
+                    // reminders would otherwise silently never show).
+                    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+                        contract = ActivityResultContracts.RequestPermission(),
+                        onResult = {}
+                    )
+                    LaunchedEffect(Unit) {
+                        if (PermissionUtils.isNotificationPermissionRequired() &&
+                            !PermissionUtils.hasNotificationPermission(context)
+                        ) {
+                            notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                    }
+
                     // Schedule midnight streak reset and reschedule all habit reminders
                     LaunchedEffect(Unit) {
-                        com.mohammadfaizan.habitquest.utils.StreakResetManager.scheduleMidnightReset(context)
+                        StreakResetManager.scheduleMidnightReset(context)
                         // Reschedule all habit reminders on app startup
                         val allHabits = habitRepo.getAllHabits().first()
                         NotificationScheduler.rescheduleAllReminders(context, allHabits)
                     }
 
                     var appState by remember { mutableStateOf<AppState>(AppState.Splash) }
-                    var showAddHabitScreen by remember { mutableStateOf(false) }
-                    var showSettingsScreen by remember { mutableStateOf(false) }
-                    var showGeneralSettingsScreen by remember { mutableStateOf(false) }
-                    var habitToEdit by remember { mutableStateOf<Habit?>(null) }
                     val scope = rememberCoroutineScope()
 
                     when (appState) {
@@ -149,142 +206,24 @@ class MainActivity : ComponentActivity() {
                         }
 
                         AppState.Main -> {
-                            // Settings Screen
-                            if (showSettingsScreen && !showGeneralSettingsScreen) {
-                                AnimatedVisibility(
-                                    visible = true,
-                                    enter = slideInVertically(
-                                        initialOffsetY = { it },
-                                        animationSpec = tween(durationMillis = 200)
-                                    ),
-                                    exit = slideOutVertically(
-                                        targetOffsetY = { it },
-                                        animationSpec = tween(durationMillis = 200)
-                                    )
-                                ) {
-                                    SettingsScreen(
-                                        onBackClick = {
-                                            showSettingsScreen = false
-                                        },
-                                        onNavigateToGeneral = {
-                                            showGeneralSettingsScreen = true
-                                        },
-                                        habitViewModel = habitViewModel,
-                                        modifier = Modifier.padding(innerPadding)
-                                    )
-                                }
+                            val navController = rememberNavController()
+                            val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+                            var habitToEdit by remember { mutableStateOf<Habit?>(null) }
+                            var selectedHabitForDetail by remember { mutableStateOf<Habit?>(null) }
+                            val currentRoute by navController.currentBackStackEntryAsState()
+
+                            // ModalNavigationDrawer computes its closed offset from the drawer
+                            // sheet's measured width, which isn't known on the very first frame —
+                            // so it can render open for a frame before snapping shut. Force a
+                            // no-animation snap once layout settles so that flash never shows.
+                            LaunchedEffect(Unit) {
+                                drawerState.snapTo(DrawerValue.Closed)
                             }
 
-                            if (showGeneralSettingsScreen) {
-                                AnimatedVisibility(
-                                    visible = true,
-                                    enter = slideInVertically(
-                                        initialOffsetY = { it },
-                                        animationSpec = tween(durationMillis = 200)
-                                    ),
-                                    exit = slideOutVertically(
-                                        targetOffsetY = { it },
-                                        animationSpec = tween(durationMillis = 200)
-                                    )
-                                ) {
-                                    GeneralSettingsScreen(
-                                        onBackClick = {
-                                            showGeneralSettingsScreen = false
-                                        },
-                                        modifier = Modifier.padding(innerPadding)
-                                    )
-                                }
+                            BackHandler(enabled = drawerState.isOpen) {
+                                scope.launch { drawerState.close() }
                             }
 
-                            // Add Habit Screen
-                            AnimatedVisibility(
-                                visible = showAddHabitScreen,
-                                enter = slideInVertically(
-                                    initialOffsetY = { it },
-                                    animationSpec = tween(durationMillis = 100)
-                                ),
-                                exit = slideOutVertically(
-                                    targetOffsetY = { it },
-                                    animationSpec = tween(durationMillis = 100)
-                                )
-                            ) {
-                                AddHabitScreen(
-                                    onBack = {
-                                        showAddHabitScreen = false
-                                        habitToEdit = null
-                                        addHabitViewModel.resetForm()
-                                    },
-                                    onCreateHabit = { name, description, color, category, frequency, targetCount, reminderEnabled, reminderTime ->
-                                        scope.launch {
-                                            addHabitViewModel.createHabit()
-                                        }
-                                    },
-                                    onUpdateHabit = { habitId, name, description, color, category, frequency, targetCount, reminderEnabled, reminderTime ->
-                                        scope.launch {
-                                            val result = updateHabitUseCase(
-                                                habitId,
-                                                name,
-                                                description,
-                                                color,
-                                                category,
-                                                frequency,
-                                                targetCount,
-                                                reminderEnabled,
-                                                reminderTime
-                                            )
-                                            when (result) {
-                                                is UpdateHabitResult.Success -> {
-                                                    Toast.makeText(
-                                                        context,
-                                                        "Habit updated successfully!",
-                                                        Toast.LENGTH_SHORT
-                                                    ).show()
-                                                    showAddHabitScreen = false
-                                                    habitToEdit = null
-                                                    addHabitViewModel.resetForm()
-                                                    scope.launch {
-                                                        kotlinx.coroutines.delay(100)
-                                                        habitViewModel.refreshHabits()
-                                                        // Reschedule notification for the updated habit
-                                                        val updatedHabit = result.habit
-                                                        if (updatedHabit.reminderEnabled) {
-                                                            NotificationScheduler.scheduleHabitReminder(context, updatedHabit)
-                                                        } else {
-                                                            NotificationScheduler.cancelHabitReminder(context, updatedHabit.id)
-                                                        }
-                                                    }
-                                                }
-
-                                                is UpdateHabitResult.Error -> {
-                                                    Toast.makeText(
-                                                        context,
-                                                        "Error updating habit: ${result.message}",
-                                                        Toast.LENGTH_LONG
-                                                    ).show()
-                                                }
-                                            }
-                                        }
-                                    },
-                                    onDeleteHabit = { habitId ->
-                                        // Cancel notification before deleting
-                                        NotificationScheduler.cancelHabitReminder(context, habitId)
-                                        habitViewModel.deleteHabit(habitId)
-                                        Toast.makeText(
-                                            context,
-                                            "Habit deleted successfully!",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                        showAddHabitScreen = false
-                                        habitToEdit = null
-                                        addHabitViewModel.resetForm()
-                                    },
-                                    modifier = Modifier.padding(innerPadding),
-                                    viewModel = addHabitViewModel,
-                                    habitToEdit = habitToEdit
-                                )
-                                                        }
-
-                            // LaunchedEffect blocks moved outside AnimatedVisibility
                             LaunchedEffect(addHabitViewModel.actions) {
                                 addHabitViewModel.actions.collect { action ->
                                     action?.let {
@@ -295,10 +234,9 @@ class MainActivity : ComponentActivity() {
                                                     "Habit created successfully!",
                                                     Toast.LENGTH_SHORT
                                                 ).show()
-                                                showAddHabitScreen = false
-                                                addHabitViewModel.resetForm()
+                                                navController.popBackStack(Routes.HOME, inclusive = false)
                                                 scope.launch {
-                                                    kotlinx.coroutines.delay(100)
+                                                    delay(100)
                                                     habitViewModel.refreshHabits()
                                                     // Schedule notification for the newly created habit
                                                     val habitId = it.data as? Long
@@ -351,6 +289,7 @@ class MainActivity : ComponentActivity() {
                                     habit.description ?: ""
                                 )
                                 addHabitViewModel.updateColor(habit.color)
+                                addHabitViewModel.updateIcon(habit.icon ?: AVAILABLE_HABIT_ICONS.first())
                                 addHabitViewModel.updateCategory(habit.category ?: "")
                                 addHabitViewModel.updateFrequency(habit.frequency.name)
                                 addHabitViewModel.updateTargetCount(habit.targetCount)
@@ -358,40 +297,314 @@ class MainActivity : ComponentActivity() {
                                 addHabitViewModel.updateReminderTime(
                                     habit.reminderTime ?: "09:00"
                                 )
-                                showAddHabitScreen = true
+                                addHabitViewModel.updateReminderDays(
+                                    DateUtils.parseReminderDays(habit.reminderDays)
+                                )
+                                navController.navigate(Routes.ADD_HABIT)
                             }
 
-                            // Main content when screens are not shown
-                            if (!showAddHabitScreen && !showSettingsScreen && !showGeneralSettingsScreen) {
-                                Scaffold(
-                                    topBar = {
-                                        TopAppBarComponent(
-                                            title = "Habit Quest",
-                                            onMenuClick = {
-                                                showSettingsScreen = true
+                            val openHabitDetail: (Habit) -> Unit = { habit ->
+                                selectedHabitForDetail = habit
+                                habitDetailViewModel.loadStats(habit.id)
+                                navController.navigate(Routes.HABIT_DETAIL)
+                            }
+
+                            ModalNavigationDrawer(
+                                drawerState = drawerState,
+                                gesturesEnabled = currentRoute?.destination?.route == Routes.HOME,
+                                drawerContent = {
+                                    ModalDrawerSheet {
+                                        SettingsDrawerContent(
+                                            onNavigateToGeneral = {
+                                                scope.launch { drawerState.close() }
+                                                navController.navigate(Routes.GENERAL_SETTINGS)
                                             },
-                                            onStatsClick = {
+                                            onNavigateToReorder = {
+                                                scope.launch { drawerState.close() }
+                                                navController.navigate(Routes.REORDER_HABITS)
+                                            },
+                                            onNavigateToAnalytics = {
+                                                scope.launch { drawerState.close() }
+                                                navController.navigate(Routes.ANALYTICS)
+                                            },
+                                            onNavigateToArchived = {
+                                                scope.launch { drawerState.close() }
+                                                navController.navigate(Routes.ARCHIVED_HABITS)
+                                            },
+                                            habitViewModel = habitViewModel
+                                        )
+                                    }
+                                }
+                            ) {
+                                NavHost(
+                                    navController = navController,
+                                    startDestination = Routes.HOME,
+                                    enterTransition = {
+                                        slideInHorizontally(initialOffsetX = { it }) + fadeIn()
+                                    },
+                                    exitTransition = {
+                                        slideOutHorizontally(targetOffsetX = { -it / 4 }) + fadeOut()
+                                    },
+                                    popEnterTransition = {
+                                        slideInHorizontally(initialOffsetX = { -it / 4 }) + fadeIn()
+                                    },
+                                    popExitTransition = {
+                                        slideOutHorizontally(targetOffsetX = { it }) + fadeOut()
+                                    }
+                                ) {
+                                    composable(
+                                        Routes.HOME,
+                                        // Add Habit is a modal "create" sheet, not a drill-down
+                                        // destination, so Home just fades behind it (and fades
+                                        // back in on dismiss) instead of sliding sideways.
+                                        exitTransition = {
+                                            if (targetState.destination.route == Routes.ADD_HABIT) {
+                                                fadeOut(animationSpec = tween(150))
+                                            } else {
+                                                slideOutHorizontally(targetOffsetX = { -it / 4 }) + fadeOut()
+                                            }
+                                        },
+                                        popEnterTransition = {
+                                            if (initialState.destination.route == Routes.ADD_HABIT) {
+                                                fadeIn(animationSpec = tween(150))
+                                            } else {
+                                                slideInHorizontally(initialOffsetX = { -it / 4 }) + fadeIn()
+                                            }
+                                        }
+                                    ) {
+                                        var showProSheet by remember { mutableStateOf(false) }
+
+                                        Scaffold(
+                                            topBar = {
+                                                TopAppBarComponent(
+                                                    title = "Habit Quest",
+                                                    onMenuClick = {
+                                                        scope.launch { drawerState.open() }
+                                                    },
+                                                    onStatsClick = {
+                                                        Toast.makeText(
+                                                            context, "Work in progress",
+                                                            Toast.LENGTH_SHORT
+                                                        ).show()
+                                                    },
+                                                    onAddClick = {
+                                                        habitToEdit = null
+                                                        addHabitViewModel.resetForm()
+                                                        navController.navigate(Routes.ADD_HABIT)
+                                                    },
+                                                    onCrownClick = {
+                                                        showProSheet = true
+                                                    }
+                                                )
+                                            },
+                                            modifier = Modifier.fillMaxSize()
+                                        ) { homeInnerPadding ->
+                                            HomeScreen(
+                                                habitViewModel = habitViewModel,
+                                                onAddHabitClick = {
+                                                    habitToEdit = null
+                                                    addHabitViewModel.resetForm()
+                                                    navController.navigate(Routes.ADD_HABIT)
+                                                },
+                                                onHabitClick = openHabitDetail,
+                                                onHabitLongClick = openHabitEditor,
+                                                modifier = Modifier.padding(homeInnerPadding)
+                                            )
+                                        }
+
+                                        if (showProSheet) {
+                                            ProUpgradeSheet(onDismiss = { showProSheet = false })
+                                        }
+                                    }
+
+                                    composable(
+                                        Routes.ADD_HABIT,
+                                        // Modal "create" sheet: rises up from the bottom instead
+                                        // of the lateral push used for drill-down navigation.
+                                        enterTransition = {
+                                            slideInVertically(
+                                                initialOffsetY = { it },
+                                                animationSpec = tween(280)
+                                            ) + fadeIn(animationSpec = tween(200))
+                                        },
+                                        popExitTransition = {
+                                            slideOutVertically(
+                                                targetOffsetY = { it },
+                                                animationSpec = tween(220)
+                                            ) + fadeOut(animationSpec = tween(150))
+                                        }
+                                    ) {
+                                        // Reset only after this screen leaves composition, not on tap — else the form clears mid slide-out.
+                                        DisposableEffect(Unit) {
+                                            onDispose {
+                                                habitToEdit = null
+                                                addHabitViewModel.resetForm()
+                                            }
+                                        }
+
+                                        AddHabitScreen(
+                                            onBack = {
+                                                navController.popBackStack()
+                                            },
+                                            onCreateHabit = { _, _, _, _, _, _, _, _ ->
+                                                scope.launch {
+                                                    addHabitViewModel.createHabit()
+                                                }
+                                            },
+                                            onUpdateHabit = { habitId, name, description, color, category, frequency, targetCount, reminderEnabled, reminderTime, reminderDays, icon ->
+                                                scope.launch {
+                                                    val result = updateHabitUseCase(
+                                                        habitId,
+                                                        name,
+                                                        description,
+                                                        color,
+                                                        category,
+                                                        frequency,
+                                                        targetCount,
+                                                        reminderEnabled,
+                                                        reminderTime,
+                                                        reminderDays,
+                                                        icon
+                                                    )
+                                                    when (result) {
+                                                        is UpdateHabitResult.Success -> {
+                                                            Toast.makeText(
+                                                                context,
+                                                                "Habit updated successfully!",
+                                                                Toast.LENGTH_SHORT
+                                                            ).show()
+                                                            navController.popBackStack()
+                                                            scope.launch {
+                                                                delay(100)
+                                                                habitViewModel.refreshHabits()
+                                                                // Reschedule notification for the updated habit
+                                                                val updatedHabit = result.habit
+                                                                if (updatedHabit.reminderEnabled) {
+                                                                    NotificationScheduler.scheduleHabitReminder(context, updatedHabit)
+                                                                } else {
+                                                                    NotificationScheduler.cancelHabitReminder(context, updatedHabit.id)
+                                                                }
+                                                            }
+                                                        }
+
+                                                        is UpdateHabitResult.Error -> {
+                                                            Toast.makeText(
+                                                                context,
+                                                                "Error updating habit: ${result.message}",
+                                                                Toast.LENGTH_LONG
+                                                            ).show()
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            onDeleteHabit = { habitId ->
+                                                // Cancel notification before deleting
+                                                NotificationScheduler.cancelHabitReminder(context, habitId)
+                                                habitViewModel.deleteHabit(habitId)
                                                 Toast.makeText(
-                                                    context, "Work in progress",
+                                                    context,
+                                                    "Habit deleted successfully!",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                                navController.popBackStack()
+                                            },
+                                            onArchiveHabit = { habitId ->
+                                                // Cancel reminders — an archived habit shouldn't keep buzzing
+                                                NotificationScheduler.cancelHabitReminder(context, habitId)
+                                                habitViewModel.archiveHabit(habitId)
+                                                Toast.makeText(
+                                                    context,
+                                                    "Habit archived",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                                navController.popBackStack()
+                                            },
+                                            modifier = Modifier.padding(innerPadding),
+                                            viewModel = addHabitViewModel,
+                                            habitToEdit = habitToEdit
+                                        )
+                                    }
+
+                                    composable(Routes.GENERAL_SETTINGS) {
+                                        GeneralSettingsScreen(
+                                            onBackClick = {
+                                                navController.popBackStack()
+                                            },
+                                            modifier = Modifier.padding(innerPadding)
+                                        )
+                                    }
+
+                                    composable(Routes.REORDER_HABITS) {
+                                        ReorderHabitsScreen(
+                                            habitViewModel = habitViewModel,
+                                            onBackClick = {
+                                                navController.popBackStack()
+                                            },
+                                            modifier = Modifier.padding(innerPadding)
+                                        )
+                                    }
+
+                                    composable(Routes.HABIT_DETAIL) {
+                                        val habit = selectedHabitForDetail
+                                        if (habit == null) {
+                                            LaunchedEffect(Unit) { navController.popBackStack() }
+                                        } else {
+                                            val detailUiState by habitViewModel.uiState.collectAsState()
+                                            val stats by habitDetailViewModel.stats.collectAsState()
+
+                                            HabitDetailScreen(
+                                                habit = habit,
+                                                completions = detailUiState.habitCompletions[habit.id] ?: emptyList(),
+                                                stats = stats,
+                                                onBackClick = {
+                                                    navController.popBackStack()
+                                                },
+                                                onEditClick = {
+                                                    navController.popBackStack()
+                                                    openHabitEditor(habit)
+                                                },
+                                                modifier = Modifier.padding(innerPadding)
+                                            )
+                                        }
+                                    }
+
+                                    composable(Routes.ANALYTICS) {
+                                        LaunchedEffect(Unit) {
+                                            analyticsViewModel.loadOverallAnalytics()
+                                        }
+                                        AnalyticsScreen(
+                                            analyticsViewModel = analyticsViewModel,
+                                            onBackClick = {
+                                                navController.popBackStack()
+                                            },
+                                            modifier = Modifier.padding(innerPadding)
+                                        )
+                                    }
+
+                                    composable(Routes.ARCHIVED_HABITS) {
+                                        ArchivedHabitsScreen(
+                                            habitViewModel = habitViewModel,
+                                            onBackClick = {
+                                                navController.popBackStack()
+                                            },
+                                            onRestoreClick = { habit ->
+                                                habitViewModel.restoreHabit(habit.id)
+                                                // Resume reminders for the restored habit, if it had any.
+                                                if (habit.reminderEnabled) {
+                                                    NotificationScheduler.scheduleHabitReminder(
+                                                        context,
+                                                        habit.copy(isActive = true)
+                                                    )
+                                                }
+                                                Toast.makeText(
+                                                    context,
+                                                    "Habit restored",
                                                     Toast.LENGTH_SHORT
                                                 ).show()
                                             },
-                                            onAddClick = {
-                                                showAddHabitScreen = true
-                                            }
+                                            modifier = Modifier.padding(innerPadding)
                                         )
-                                    },
-                                    modifier = Modifier.fillMaxSize()
-                                ) { innerPadding ->
-                                    HomeScreen(
-                                        habitViewModel = habitViewModel,
-                                        onAddHabitClick = {
-                                            showAddHabitScreen = true
-                                        },
-                                            onHabitClick = openHabitEditor,
-                                            onHabitLongClick = openHabitEditor,
-                                        modifier = Modifier.padding(innerPadding)
-                                    )
+                                    }
                                 }
                             }
                         }

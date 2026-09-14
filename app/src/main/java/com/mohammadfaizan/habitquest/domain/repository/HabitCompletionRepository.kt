@@ -1,6 +1,7 @@
 package com.mohammadfaizan.habitquest.domain.repository
 
 import com.mohammadfaizan.habitquest.data.local.CompletionPattern
+import com.mohammadfaizan.habitquest.data.local.DayOfWeekCount
 import com.mohammadfaizan.habitquest.data.local.HabitCompletion
 import kotlinx.coroutines.flow.Flow
 import java.util.Date
@@ -51,4 +52,8 @@ interface HabitCompletionRepository {
     // Random data generation for screenshots/demos
     suspend fun generateRandomCompletions(habitId: Long, days: Int = 182, completionProbability: Float = 0.7f)
     suspend fun insertCompletions(completions: List<HabitCompletion>)
+
+    // Analytics
+    suspend fun getTotalCompletionsCount(): Int
+    suspend fun getCompletionCountsByDayOfWeek(): List<DayOfWeekCount>
 } 

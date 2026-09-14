@@ -34,7 +34,13 @@ interface HabitRepository {
     fun getTopStreakHabits(limit: Int): Flow<List<Habit>>
     fun getTopCompletionHabits(limit: Int): Flow<List<Habit>>
 
+    // Status
+    suspend fun updateHabitStatus(habitId: Long, isActive: Boolean)
+
     // Bulk Operations
     suspend fun deactivateHabitsByCategory(category: String)
     suspend fun deleteHabitsByCategory(category: String)
+
+    // Ordering
+    suspend fun updateHabitsOrder(orderedHabitIds: List<Long>)
 } 

@@ -3,8 +3,7 @@ package com.mohammadfaizan.habitquest.ui.screens
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.widget.Toast
-import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,23 +11,22 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -66,9 +64,11 @@ data class MenuSection(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(
-    onBackClick: () -> Unit,
+fun SettingsDrawerContent(
     onNavigateToGeneral: () -> Unit,
+    onNavigateToReorder: () -> Unit = {},
+    onNavigateToAnalytics: () -> Unit = {},
+    onNavigateToArchived: () -> Unit = {},
     habitViewModel: com.mohammadfaizan.habitquest.ui.viewmodel.HabitViewModel? = null,
     modifier: Modifier = Modifier
 ) {
@@ -76,13 +76,9 @@ fun SettingsScreen(
     val hapticFeedback = LocalHapticFeedback.current
     val view = LocalView.current
     val versionName = getAppVersionName(context)
-    
+
     var showThemeBottomSheet by remember { mutableStateOf(false) }
     var isDarkTheme by remember { mutableStateOf(false) }
-
-    BackHandler {
-        onBackClick()
-    }
 
     val menuSections = remember {
         listOf(
@@ -125,8 +121,12 @@ fun SettingsScreen(
                             )
                         }
                     ) {
-                        Toast.makeText(context, "Coming soon! Work in progress", Toast.LENGTH_SHORT)
-                            .show()
+                        try {
+                            view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
+                        } catch (e: Exception) {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+                        onNavigateToReorder()
                     },
                     MenuItem(
                         title = "Analytics",
@@ -137,8 +137,28 @@ fun SettingsScreen(
                             )
                         }
                     ) {
-                        Toast.makeText(context, "Coming soon! Work in progress", Toast.LENGTH_SHORT)
-                            .show()
+                        try {
+                            view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
+                        } catch (e: Exception) {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+                        onNavigateToAnalytics()
+                    },
+                    MenuItem(
+                        title = "Archived Habits",
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_dashboard),
+                                contentDescription = null
+                            )
+                        }
+                    ) {
+                        try {
+                            view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
+                        } catch (e: Exception) {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+                        onNavigateToArchived()
                     },
                     MenuItem(
                         title = "Backup and Restore",
@@ -330,29 +350,33 @@ fun SettingsScreen(
         )
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface)
-    ) {
-        IconButton(
-            onClick = {
-                try {
-                    view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
-                } catch (e: Exception) {
-                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                }
-                onBackClick()
-            }
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 20.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Go Back"
+            Image(
+                painter = painterResource(R.drawable.applogo),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(10.dp))
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = "Habit Quest",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
 
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {

@@ -1,5 +1,6 @@
 package com.mohammadfaizan.habitquest.domain.usecase
 
+import com.mohammadfaizan.habitquest.domain.repository.CompleteHabitOutcome
 import com.mohammadfaizan.habitquest.domain.repository.HabitManagementRepository
 import com.mohammadfaizan.habitquest.utils.DateUtils
 import javax.inject.Inject
@@ -37,10 +38,9 @@ class CompleteHabitUseCase @Inject constructor(
                 )
             }
 
-            val completionSuccess =
-                habitManagementRepository.completeHabit(request.habitId, request.notes)
+            val outcome = habitManagementRepository.completeHabit(request.habitId, request.notes)
 
-            if (!completionSuccess) {
+            if (outcome == CompleteHabitOutcome.FAILED) {
                 return CompleteHabitResult(success = false, error = "Failed to complete habit")
             }
 
@@ -52,7 +52,7 @@ class CompleteHabitUseCase @Inject constructor(
 
             CompleteHabitResult(
                 success = true,
-                wasAlreadyCompleted = false,
+                wasAlreadyCompleted = outcome == CompleteHabitOutcome.ALREADY_AT_TARGET,
                 newStreak = newStreak,
                 currentCompletions = todayCompletions,
                 targetCount = habit.habit.targetCount

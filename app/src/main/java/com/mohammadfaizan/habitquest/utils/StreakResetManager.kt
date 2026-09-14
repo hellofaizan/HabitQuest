@@ -6,7 +6,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import androidx.room.Room
 import com.mohammadfaizan.habitquest.data.local.AppDatabase
 import com.mohammadfaizan.habitquest.data.repository.HabitCompletionRepositoryImpl
 import com.mohammadfaizan.habitquest.data.repository.HabitManagementRepositoryImpl
@@ -28,21 +27,19 @@ class StreakResetReceiver : BroadcastReceiver() {
             }
             
             if (intent.action == "com.mohammadfaizan.habitquest.STREAK_RESET") {
-                val db = Room.databaseBuilder(
-                    context,
-                    AppDatabase::class.java,
-                    "app-db"
-                ).build()
-
-                val habitRepo = HabitRepositoryImpl(db.habitDao())
-                val habitCompletionRepo = HabitCompletionRepositoryImpl(db.habitCompletionDao())
-                val habitManagementRepo = HabitManagementRepositoryImpl(habitRepo, habitCompletionRepo)
-
+                val pendingResult = goAsync()
                 CoroutineScope(Dispatchers.IO).launch {
-                    habitManagementRepo.checkAndResetStreaksIfNeeded()
-                    db.close()
+                    try {
+                        val db = AppDatabase.getInstance(context)
+                        val habitRepo = HabitRepositoryImpl(db.habitDao())
+                        val habitCompletionRepo = HabitCompletionRepositoryImpl(db.habitCompletionDao())
+                        val habitManagementRepo = HabitManagementRepositoryImpl(habitRepo, habitCompletionRepo, db)
+                        habitManagementRepo.checkAndResetStreaksIfNeeded()
+                    } finally {
+                        pendingResult.finish()
+                    }
                 }
-                
+
                 // Reschedule for next midnight
                 StreakResetManager.scheduleMidnightReset(context)
             }
@@ -74,19 +71,34 @@ object StreakResetManager {
             add(Calendar.DAY_OF_YEAR, 1) // Next midnight
         }
 
-        // Schedule the alarm
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            alarmManager.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                calendar.timeInMillis,
-                pendingIntent
-            )
-        } else {
-            alarmManager.setExact(
-                AlarmManager.RTC_WAKEUP,
-                calendar.timeInMillis,
-                pendingIntent
-            )
+        // Schedule the alarm. Exact alarms require runtime permission on Android 12+
+        // (and are no longer auto-granted on Android 14+ for apps like this one), so fall
+        // back to an inexact alarm rather than risk a SecurityException.
+        val canScheduleExact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+            alarmManager.canScheduleExactAlarms()
+
+        when {
+            canScheduleExact && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M -> {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    calendar.timeInMillis,
+                    pendingIntent
+                )
+            }
+            canScheduleExact -> {
+                alarmManager.setExact(
+                    AlarmManager.RTC_WAKEUP,
+                    calendar.timeInMillis,
+                    pendingIntent
+                )
+            }
+            else -> {
+                alarmManager.set(
+                    AlarmManager.RTC_WAKEUP,
+                    calendar.timeInMillis,
+                    pendingIntent
+                )
+            }
         }
     }
     

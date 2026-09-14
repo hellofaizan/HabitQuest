@@ -5,6 +5,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 import java.util.Date
@@ -13,10 +14,10 @@ import java.util.Date
 interface HabitDao {
 
     // Basic CRUD operations
-    @Query("SELECT * FROM habits ORDER BY createdAt DESC")
+    @Query("SELECT * FROM habits ORDER BY sortOrder ASC, createdAt DESC")
     fun getAllHabits(): Flow<List<Habit>>
 
-    @Query("SELECT * FROM habits WHERE isActive = 1 ORDER BY createdAt DESC")
+    @Query("SELECT * FROM habits WHERE isActive = 1 ORDER BY sortOrder ASC, createdAt DESC")
     fun getActiveHabits(): Flow<List<Habit>>
 
     @Query("SELECT * FROM habits WHERE id = :habitId")
@@ -54,6 +55,17 @@ interface HabitDao {
 
     @Query("UPDATE habits SET totalCompletion = totalCompletion + 1 WHERE id = :habitId")
     suspend fun incrementCompletions(habitId: Long)
+
+    // Ordering operations
+    @Query("UPDATE habits SET sortOrder = :sortOrder WHERE id = :habitId")
+    suspend fun updateSortOrder(habitId: Long, sortOrder: Int)
+
+    @Transaction
+    suspend fun updateHabitsOrder(orderedHabitIds: List<Long>) {
+        orderedHabitIds.forEachIndexed { index, habitId ->
+            updateSortOrder(habitId, index)
+        }
+    }
 
     // Status operations
     @Query("UPDATE habits SET isActive = :isActive WHERE id = :habitId")

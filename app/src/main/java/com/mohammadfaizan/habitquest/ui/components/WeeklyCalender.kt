@@ -1,12 +1,18 @@
 package com.mohammadfaizan.habitquest.ui.components
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.foundation.layout.Arrangement
@@ -21,7 +27,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -33,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
@@ -45,6 +51,9 @@ import com.mohammadfaizan.habitquest.utils.DateUtils
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+
+private val weekDateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+private val weekDayAbbrevFormat = SimpleDateFormat("EEE", Locale.getDefault())
 
 data class DayProgress(
     val date: String,
@@ -247,24 +256,34 @@ fun WeeklyCalendarWithData(
     )
 
     Column(modifier = modifier) {
-        // Show "Back to current week" button when viewing old data
-        if (weekOffset < 0) {
-            Box(
+        // Small "back to today" chip when viewing a past week — deliberately compact so it
+        // doesn't dominate the layout the way a full-width button did.
+        AnimatedVisibility(
+            visible = weekOffset < 0,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                contentAlignment = Alignment.Center
+                    .padding(start = 16.dp, top = 6.dp, end = 16.dp),
+                horizontalArrangement = Arrangement.End
             ) {
-                Button(
-                    onClick = {
-                        weekOffset = 0
-                        onWeekChange?.invoke(0)
-                    },
-                    modifier = Modifier.fillMaxWidth()
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                        .clickable {
+                            weekOffset = 0
+                            onWeekChange?.invoke(0)
+                        }
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Text(
-                        text = "← Back to Current Week",
-                        style = MaterialTheme.typography.bodyMedium
+                        text = "Back to Today",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
             }
@@ -359,11 +378,10 @@ private fun generateWeekDays(weekOffset: Int): List<String> {
     calendar.set(Calendar.MILLISECOND, 0)
 
     val weekDays = mutableListOf<String>()
-    val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
     for (i in 0..6) {
         val date = calendar.time
-        weekDays.add(dateFormat.format(date))
+        weekDays.add(weekDateFormat.format(date))
         calendar.add(Calendar.DAY_OF_YEAR, 1)
     }
 
@@ -371,22 +389,17 @@ private fun generateWeekDays(weekOffset: Int): List<String> {
 }
 
 private fun getDayOfWeekAbbreviation(dateKey: String): String {
-    val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-    val dayFormat = SimpleDateFormat("EEE", Locale.getDefault())
-
     return try {
-        val date = dateFormat.parse(dateKey)
-        dayFormat.format(date!!)
+        val date = weekDateFormat.parse(dateKey)
+        weekDayAbbrevFormat.format(date!!)
     } catch (e: Exception) {
         ""
     }
 }
 
 private fun getDayNumber(dateKey: String): Int {
-    val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-
     return try {
-        val date = dateFormat.parse(dateKey)
+        val date = weekDateFormat.parse(dateKey)
         val calendar = Calendar.getInstance()
         calendar.time = date!!
         calendar.get(Calendar.DAY_OF_MONTH)

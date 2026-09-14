@@ -21,14 +21,14 @@ A beautiful and intuitive habit tracking app built with Jetpack Compose. Track y
 - [x] Habit frequency options (Daily, Weekly, Monthly, Custom)
 - [x] Category-based organization
 - [ ] Habit templates/presets (common habits like exercise, meditation, reading)
-- [ ] Archive functionality for inactive habits (keep history but hide from main view)
-- [ ] Habit reordering by drag and drop (priority sorting)
-- [ ] Search and filter UI for habits (by name, category, streak)
+- [x] Archive functionality for inactive habits (keep history but hide from main view)
+- [x] Habit reordering by drag and drop (priority sorting)
+- [x] Search and filter UI for habits (by name, category)
 
 ### Progress & Analytics
-- [ ] Display streaks prominently on habit cards (current streak and longest streak badges)
-- [ ] Analytics dashboard screen with charts (completion rates, trends, best days)
-- [ ] Habit detail screen showing full statistics and completion history
+- [x] Display streaks prominently on habit cards (current streak and longest streak badges)
+- [x] Analytics dashboard screen with charts (completion rates, best days)
+- [x] Habit detail screen showing full statistics and completion history
 - [ ] Yearly/monthly overview screens with calendar heatmap
 - [ ] Habit chains visualization (visual chain showing consecutive days)
 - [ ] Weekly/monthly reports with insights (best performing habits, areas to improve)
@@ -36,20 +36,22 @@ A beautiful and intuitive habit tracking app built with Jetpack Compose. Track y
 - [x] Completion statistics and progress tracking
 
 ### Notifications & Reminders
-- [ ] Notification system for habit reminders (WorkManager + NotificationManager)
-- [x] Reminder time setting (UI ready, notifications not implemented)
+- [x] Notification system for habit reminders (WorkManager + NotificationManager, with quick-complete action)
+- [x] Reminder time setting with per-day-of-week scheduling
+- [x] Midnight streak reset (AlarmManager) that survives reboot
 
 ### User Experience
-- [ ] Add ability to edit/add notes when completing habits (tap completion to edit)
-- [ ] Undo completion feature (swipe to undo recent completions)
-- [ ] Quick actions (complete all habits for today, quick add common habits)
+- [x] Add ability to edit/add notes when completing habits (tap completion to edit)
+- [x] Undo completion feature (tap the completed checkmark again to undo)
+- [x] Quick action: complete all habits for today
+- [ ] Quick add common habits (see Habit templates/presets below)
 - [ ] Onboarding tips/tutorial for first-time users
-- [ ] Custom icon picker for habits (use existing icon field)
+- [x] Custom icon picker for habits (emoji-based, shown on habit cards)
 - [ ] Streak freeze feature (allow skipping days without breaking streak)
 
 ### Achievements & Motivation
-- [ ] Achievement badges/milestones system (7-day streak, 30-day streak, 100 completions)
-- [ ] Motivational quotes or encouraging messages when completing habits
+- [x] Achievement badges/milestones system (7/30/100/365-day streaks, 10/50/100/500 completions)
+- [x] Motivational quotes or encouraging messages when completing habits
 
 ### Data & Backup
 - [ ] Backup and restore functionality (export/import JSON/CSV)
@@ -94,10 +96,9 @@ A beautiful and intuitive habit tracking app built with Jetpack Compose. Track y
 ## 🎯 Roadmap
 
 See the [Features](#-features) section above for a complete list of planned features. Priority items include:
-- Notification system implementation
-- Analytics dashboard
 - Home screen widget
 - Backup and restore functionality
+- Quick actions (complete all habits for today)
 
 ## 🤝 Contributing
 

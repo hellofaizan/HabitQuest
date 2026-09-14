@@ -5,7 +5,11 @@ import android.view.ViewTreeObserver
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -19,6 +23,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -28,6 +34,8 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +43,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -44,6 +55,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -54,20 +66,27 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.core.view.HapticFeedbackConstantsCompat
 import com.mohammadfaizan.habitquest.data.local.Habit
 import com.mohammadfaizan.habitquest.ui.components.CategoryChips
 import com.mohammadfaizan.habitquest.ui.components.ColorOption
 import com.mohammadfaizan.habitquest.ui.components.InputField
 import com.mohammadfaizan.habitquest.ui.viewmodel.AddHabitViewModel
+import com.mohammadfaizan.habitquest.ui.viewmodel.AVAILABLE_HABIT_ICONS
+import com.mohammadfaizan.habitquest.ui.viewmodel.DEFAULT_REMINDER_DAYS
+import com.mohammadfaizan.habitquest.utils.DateUtils
 import com.mohammadfaizan.habitquest.utils.PermissionUtils
+import java.util.Calendar
 
 @Composable
 fun AddHabitScreen(
     onBack: () -> Unit,
     onCreateHabit: (name: String, description: String?, color: String, category: String?, frequency: String, targetCount: Int, reminderEnabled: Boolean, reminderTime: String?) -> Unit = { _, _, _, _, _, _, _, _ -> },
-    onUpdateHabit: (Long, name: String, description: String?, color: String, category: String?, frequency: String, targetCount: Int, reminderEnabled: Boolean, reminderTime: String?) -> Unit = { _, _, _, _, _, _, _, _, _ -> },
+    onUpdateHabit: (Long, name: String, description: String?, color: String, category: String?, frequency: String, targetCount: Int, reminderEnabled: Boolean, reminderTime: String?, reminderDays: String, icon: String) -> Unit = { _, _, _, _, _, _, _, _, _, _, _ -> },
     onDeleteHabit: (Long) -> Unit = { },
+    onArchiveHabit: (Long) -> Unit = { },
     modifier: Modifier = Modifier,
     viewModel: AddHabitViewModel? = null,
     habitToEdit: Habit? = null
@@ -101,22 +120,26 @@ fun AddHabitScreen(
     }
 
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
 
     val formState by viewModel?.formState?.collectAsState() ?: remember { mutableStateOf(null) }
     val validation by viewModel?.validation?.collectAsState() ?: remember { mutableStateOf(null) }
 
     var name by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
-    var selectedColor by remember { mutableStateOf("#FF0000") }
+    var selectedColor by remember { mutableStateOf("#2a78d6") }
+    var selectedIcon by remember { mutableStateOf(AVAILABLE_HABIT_ICONS.first()) }
     var selectedCategory by remember { mutableStateOf("") }
     var selectedFrequency by remember { mutableStateOf("DAILY") }
     var targetCount by remember { mutableStateOf(1) }
     var reminderEnabled by remember { mutableStateOf(false) }
     var reminderTime by remember { mutableStateOf("09:00") }
+    var reminderDays by remember { mutableStateOf(DEFAULT_REMINDER_DAYS) }
 
     val currentName = formState?.name ?: (habitToEdit?.name ?: name)
     val currentDescription = formState?.description ?: (habitToEdit?.description ?: description)
     val currentColor = formState?.color ?: (habitToEdit?.color ?: selectedColor)
+    val currentIcon = formState?.icon ?: (habitToEdit?.icon ?: selectedIcon)
     val currentCategory = formState?.category ?: (habitToEdit?.category ?: selectedCategory)
     val currentFrequency =
         formState?.frequency ?: (habitToEdit?.frequency?.name ?: selectedFrequency)
@@ -124,6 +147,8 @@ fun AddHabitScreen(
     val currentReminderEnabled =
         formState?.reminderEnabled ?: (habitToEdit?.reminderEnabled ?: reminderEnabled)
     val currentReminderTime = formState?.reminderTime ?: (habitToEdit?.reminderTime ?: reminderTime)
+    val currentReminderDays = formState?.reminderDays
+        ?: (habitToEdit?.reminderDays?.let { DateUtils.parseReminderDays(it) } ?: reminderDays)
     val isFormValid = validation?.isFormValid ?: true
     val nameError = validation?.isNameValid?.let { if (!it) "Habit name is required" else null }
     val targetCountError =
@@ -150,6 +175,14 @@ fun AddHabitScreen(
             viewModel.updateColor(newColor)
         } else {
             selectedColor = newColor
+        }
+    }
+
+    val updateIcon = { newIcon: String ->
+        if (viewModel != null) {
+            viewModel.updateIcon(newIcon)
+        } else {
+            selectedIcon = newIcon
         }
     }
 
@@ -224,11 +257,21 @@ fun AddHabitScreen(
         }
     }
 
+    val toggleReminderDay = { day: Int ->
+        if (viewModel != null) {
+            viewModel.toggleReminderDay(day)
+        } else {
+            reminderDays = if (day in reminderDays) reminderDays - day else reminderDays + day
+        }
+    }
+
     // Available color options
     val availableColors = viewModel?.getAvailableColors() ?: listOf(
-        "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF",
-        "#00FFFF", "#FFA500", "#800080", "#008000", "#FFC0CB"
+        "#2a78d6", "#eb6834", "#1baf7a", "#eda100",
+        "#e87ba4", "#008300", "#4a3aa7", "#e34948"
     )
+
+    val availableIcons = viewModel?.getAvailableIcons() ?: AVAILABLE_HABIT_ICONS
 
     val availableCategories = viewModel?.getAvailableCategories() ?: listOf(
         "Health", "Fitness", "Learning", "Productivity",
@@ -280,6 +323,19 @@ fun AddHabitScreen(
             )
 
             if (habitToEdit != null) {
+                TextButton(
+                    onClick = {
+                        try {
+                            view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
+                        } catch (e: Exception) {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+                        onArchiveHabit(habitToEdit.id)
+                    }
+                ) {
+                    Text("Archive")
+                }
+
                 IconButton(
                     onClick = {
                         try {
@@ -342,6 +398,29 @@ fun AddHabitScreen(
                     color = color,
                     isSelected = currentColor == color,
                     onColorSelected = { updateColor(color) }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Text(
+            text = "Choose Icon",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Medium
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(vertical = 8.dp)
+        ) {
+            items(availableIcons) { icon ->
+                IconOption(
+                    icon = icon,
+                    isSelected = currentIcon == icon,
+                    onIconSelected = { updateIcon(icon) }
                 )
             }
         }
@@ -493,13 +572,53 @@ fun AddHabitScreen(
         if (currentReminderEnabled) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            OutlinedTextField(
-                value = currentReminderTime,
-                onValueChange = updateReminderTime,
-                label = { Text("Reminder Time") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+            Text(
+                text = "Remind on",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                reminderDayOptions.forEach { (day, label) ->
+                    DayToggleChip(
+                        label = label,
+                        selected = day in currentReminderDays,
+                        onClick = { toggleReminderDay(day) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedButton(
+                onClick = { showTimePicker = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Notifications,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Reminder Time: $currentReminderTime")
+            }
+
+            if (showTimePicker) {
+                ReminderTimePickerDialog(
+                    initialTime = currentReminderTime,
+                    onConfirm = { time ->
+                        updateReminderTime(time)
+                        showTimePicker = false
+                    },
+                    onDismiss = { showTimePicker = false }
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -507,7 +626,7 @@ fun AddHabitScreen(
         Button(
             onClick = {
                 try {
-                    view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
+                    view.performHapticFeedback(HapticFeedbackConstantsCompat.CONFIRM)
                 } catch (e: Exception) {
                     hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                 }
@@ -521,7 +640,9 @@ fun AddHabitScreen(
                         currentFrequency,
                         currentTargetCount,
                         currentReminderEnabled,
-                        if (currentReminderEnabled) currentReminderTime else null
+                        if (currentReminderEnabled) currentReminderTime else null,
+                        DateUtils.formatReminderDays(currentReminderDays),
+                        currentIcon
                     )
                 } else {
                     onCreateHabit(
@@ -601,5 +722,127 @@ fun AddHabitScreen(
             titleContentColor = MaterialTheme.colorScheme.onSurface,
             textContentColor = MaterialTheme.colorScheme.onSurfaceVariant
         )
+    }
+}
+
+// Monday-first, matching the rest of the app's week convention; values are Calendar.DAY_OF_WEEK.
+private val reminderDayOptions = listOf(
+    Calendar.MONDAY to "Mon",
+    Calendar.TUESDAY to "Tue",
+    Calendar.WEDNESDAY to "Wed",
+    Calendar.THURSDAY to "Thu",
+    Calendar.FRIDAY to "Fri",
+    Calendar.SATURDAY to "Sat",
+    Calendar.SUNDAY to "Sun"
+)
+
+@Composable
+private fun DayToggleChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(
+                if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+            )
+            .clickable { onClick() }
+            .padding(vertical = 10.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ReminderTimePickerDialog(
+    initialTime: String,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val (initialHour, initialMinute) = remember(initialTime) {
+        val parts = initialTime.split(":")
+        val hour = parts.getOrNull(0)?.toIntOrNull() ?: 9
+        val minute = parts.getOrNull(1)?.toIntOrNull() ?: 0
+        hour to minute
+    }
+
+    val timePickerState = rememberTimePickerState(
+        initialHour = initialHour,
+        initialMinute = initialMinute,
+        is24Hour = true
+    )
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(shape = RoundedCornerShape(20.dp)) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Reminder Time",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                TimePicker(state = timePickerState)
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel")
+                    }
+                    TextButton(onClick = {
+                        val hour = timePickerState.hour.toString().padStart(2, '0')
+                        val minute = timePickerState.minute.toString().padStart(2, '0')
+                        onConfirm("$hour:$minute")
+                    }) {
+                        Text("OK")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun IconOption(
+    icon: String,
+    isSelected: Boolean,
+    onIconSelected: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clip(CircleShape)
+            .background(
+                if (isSelected) MaterialTheme.colorScheme.primaryContainer
+                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            )
+            .border(
+                width = if (isSelected) 2.dp else 1.dp,
+                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                shape = CircleShape
+            )
+            .clickable { onIconSelected() },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text = icon, fontSize = 20.sp)
     }
 }

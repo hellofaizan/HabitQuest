@@ -82,11 +82,19 @@ class HabitRepositoryImpl(
         return habitDao.getTopCompletionHabits(limit)
     }
 
+    override suspend fun updateHabitStatus(habitId: Long, isActive: Boolean) {
+        habitDao.updateHabitStatus(habitId, isActive)
+    }
+
     override suspend fun deactivateHabitsByCategory(category: String) {
         habitDao.deactivateHabitsByCategory(category)
     }
 
     override suspend fun deleteHabitsByCategory(category: String) {
         habitDao.deleteHabitsByCategory(category)
+    }
+
+    override suspend fun updateHabitsOrder(orderedHabitIds: List<Long>) {
+        habitDao.updateHabitsOrder(orderedHabitIds)
     }
 } 

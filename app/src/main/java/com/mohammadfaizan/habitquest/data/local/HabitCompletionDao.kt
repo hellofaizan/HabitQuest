@@ -29,7 +29,9 @@ interface HabitCompletionDao {
     @Query("SELECT * FROM habit_completions WHERE habitId = :habitId ORDER BY completedAt DESC")
     fun getCompletionsForHabit(habitId: Long): Flow<List<HabitCompletion>>
 
-    @Query("SELECT * FROM habit_completions WHERE habitId = :habitId AND dateKey = :dateKey")
+    // Ordered so undo removes the most recently added completion, not an arbitrary one —
+    // matters once a habit has more than one completion on the same day.
+    @Query("SELECT * FROM habit_completions WHERE habitId = :habitId AND dateKey = :dateKey ORDER BY completedAt DESC LIMIT 1")
     suspend fun getCompletionForDate(habitId: Long, dateKey: String): HabitCompletion?
 
     @Query("SELECT * FROM habit_completions WHERE habitId = :habitId AND dateKey >= :startDate AND dateKey <= :endDate ORDER BY completedAt DESC")
@@ -85,9 +87,25 @@ interface HabitCompletionDao {
 
     @Query("SELECT * FROM habit_completions WHERE habitId IN (:habitIds)")
     suspend fun getCompletionsForHabits(habitIds: List<Long>): List<HabitCompletion>
+
+    // Analytics
+    @Query("SELECT COUNT(*) FROM habit_completions")
+    suspend fun getTotalCompletionsCount(): Int
+
+    @Query(
+        "SELECT CAST(strftime('%w', dateKey) AS INTEGER) AS dayOfWeek, COUNT(*) AS count " +
+            "FROM habit_completions GROUP BY dayOfWeek"
+    )
+    suspend fun getCompletionCountsByDayOfWeek(): List<DayOfWeekCount>
 }
 
 data class CompletionPattern(
     val dateKey: String,
     val count: Int
-) 
+)
+
+// dayOfWeek follows SQLite's strftime('%w'): 0 = Sunday .. 6 = Saturday
+data class DayOfWeekCount(
+    val dayOfWeek: Int,
+    val count: Int
+)

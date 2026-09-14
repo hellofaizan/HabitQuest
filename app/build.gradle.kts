@@ -66,6 +66,9 @@ dependencies {
     // Lifecycle ViewModel for Compose
     implementation(libs.androidx.lifecycle.viewmodel.compose)
 
+    // Navigation for proper screen transitions
+    implementation(libs.androidx.navigation.compose)
+
     // Hilt for Dependency Injection (optional, recommended for clean architecture)
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)

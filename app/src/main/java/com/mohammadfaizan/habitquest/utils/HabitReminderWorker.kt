@@ -1,7 +1,6 @@
 package com.mohammadfaizan.habitquest.utils
 
 import android.content.Context
-import androidx.room.Room
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.mohammadfaizan.habitquest.data.local.AppDatabase
@@ -21,16 +20,10 @@ class HabitReminderWorker(
                 return@withContext Result.failure()
             }
 
-            val db = Room.databaseBuilder(
-                applicationContext,
-                AppDatabase::class.java,
-                "app-db"
-            ).build()
+            val db = AppDatabase.getInstance(applicationContext)
 
             val habitRepo = HabitRepositoryImpl(db.habitDao())
             val habit = habitRepo.getHabitById(habitId)
-
-            db.close()
 
             if (habit != null && habit.reminderEnabled && habit.isActive) {
                 // Show notification

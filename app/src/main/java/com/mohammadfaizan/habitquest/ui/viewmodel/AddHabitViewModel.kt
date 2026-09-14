@@ -4,21 +4,38 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mohammadfaizan.habitquest.domain.usecase.AddHabitRequest
 import com.mohammadfaizan.habitquest.domain.usecase.AddHabitUseCase
+import com.mohammadfaizan.habitquest.utils.DateUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.Calendar
 import javax.inject.Inject
+
+val DEFAULT_REMINDER_DAYS = setOf(
+    Calendar.SUNDAY, Calendar.MONDAY, Calendar.TUESDAY, Calendar.WEDNESDAY,
+    Calendar.THURSDAY, Calendar.FRIDAY, Calendar.SATURDAY
+)
+
+// Emoji rather than a vector icon set — no icon-resource dependency needed, renders
+// identically everywhere, and gives genuine per-habit visual customization.
+val AVAILABLE_HABIT_ICONS = listOf(
+    "❤️", "🏃", "💪", "🧘", "📚", "💧", "🥗", "😴",
+    "🚭", "💰", "🎨", "🎵", "🧹", "🌱", "☀️", "🦷",
+    "🚴", "🏊", "✍️", "🙏"
+)
 
 data class AddHabitFormState(
     val name: String = "",
     val description: String = "",
-    val color: String = "#FF0000",
+    val color: String = "#2a78d6",
+    val icon: String = AVAILABLE_HABIT_ICONS.first(),
     val category: String = "",
     val frequency: String = "DAILY",
     val targetCount: Int = 1,
     val reminderEnabled: Boolean = false,
     val reminderTime: String = "09:00",
+    val reminderDays: Set<Int> = DEFAULT_REMINDER_DAYS,
     val isLoading: Boolean = false,
     val error: String? = null,
     val isSuccess: Boolean = false
@@ -69,6 +86,10 @@ class AddHabitViewModel @Inject constructor(
         validateForm()
     }
 
+    fun updateIcon(icon: String) {
+        _formState.value = _formState.value.copy(icon = icon)
+    }
+
     fun updateCategory(category: String) {
         _formState.value = _formState.value.copy(category = category)
     }
@@ -88,6 +109,16 @@ class AddHabitViewModel @Inject constructor(
 
     fun updateReminderTime(time: String) {
         _formState.value = _formState.value.copy(reminderTime = time)
+    }
+
+    fun updateReminderDays(days: Set<Int>) {
+        _formState.value = _formState.value.copy(reminderDays = days)
+    }
+
+    fun toggleReminderDay(day: Int) {
+        val current = _formState.value.reminderDays
+        val updated = if (day in current) current - day else current + day
+        _formState.value = _formState.value.copy(reminderDays = updated)
     }
 
     private fun validateForm() {
@@ -119,11 +150,13 @@ class AddHabitViewModel @Inject constructor(
                     name = _formState.value.name.trim(),
                     description = _formState.value.description.trim().takeIf { it.isNotBlank() },
                     color = _formState.value.color,
+                    icon = _formState.value.icon,
                     category = _formState.value.category.trim().takeIf { it.isNotBlank() },
                     frequency = _formState.value.frequency,
                     targetCount = _formState.value.targetCount,
                     reminderTime = if (_formState.value.reminderEnabled) _formState.value.reminderTime else null,
-                    reminderEnabled = _formState.value.reminderEnabled
+                    reminderEnabled = _formState.value.reminderEnabled,
+                    reminderDays = DateUtils.formatReminderDays(_formState.value.reminderDays)
                 )
 
                 val result = addHabitUseCase(request)
@@ -171,18 +204,23 @@ class AddHabitViewModel @Inject constructor(
     }
 
     fun getAvailableColors(): List<String> {
+        // Muted, graph-friendly hues (validated categorical palette) instead of
+        // harsh neon primaries — these read well both as UI accents and blended
+        // at varying alpha in the contribution graph.
         return listOf(
-            "#FF0000", // Red
-            "#00FF00", // Green
-            "#0000FF", // Blue
-            "#FFFF00", // Yellow
-            "#FF00FF", // Magenta
-            "#00FFFF", // Cyan
-            "#FFA500", // Orange
-            "#800080", // Purple
-            "#008000", // Dark Green
-            "#FFC0CB"  // Pink
+            "#2a78d6", // Blue
+            "#eb6834", // Orange
+            "#1baf7a", // Aqua
+            "#eda100", // Yellow
+            "#e87ba4", // Magenta
+            "#008300", // Green
+            "#4a3aa7", // Violet
+            "#e34948"  // Red
         )
+    }
+
+    fun getAvailableIcons(): List<String> {
+        return AVAILABLE_HABIT_ICONS
     }
 
     fun getAvailableCategories(): List<String> {

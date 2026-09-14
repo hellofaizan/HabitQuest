@@ -17,7 +17,9 @@ class UpdateHabitUseCase @Inject constructor(
         frequency: String,
         targetCount: Int,
         reminderEnabled: Boolean,
-        reminderTime: String?
+        reminderTime: String?,
+        reminderDays: String = "1,2,3,4,5,6,7",
+        icon: String? = null
     ): UpdateHabitResult {
         return try {
             val existingHabit = habitRepository.getHabitById(habitId)
@@ -29,11 +31,13 @@ class UpdateHabitUseCase @Inject constructor(
                 name = name,
                 description = description,
                 color = color,
+                icon = icon ?: existingHabit.icon,
                 category = category,
                 frequency = HabitFrequency.valueOf(frequency),
                 targetCount = targetCount,
                 reminderEnabled = reminderEnabled,
-                reminderTime = reminderTime
+                reminderTime = reminderTime,
+                reminderDays = reminderDays
             )
 
             habitRepository.updateHabit(updatedHabit)

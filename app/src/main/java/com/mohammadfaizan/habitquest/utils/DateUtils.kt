@@ -92,6 +92,16 @@ object DateUtils {
         return dayOfWeek == Calendar.SUNDAY && hour == 23 && minute >= 59
     }
 
+    // reminderDays storage format: comma-separated Calendar.DAY_OF_WEEK values (1=Sunday..7=Saturday).
+    fun parseReminderDays(value: String?): Set<Int> {
+        if (value.isNullOrBlank()) return emptySet()
+        return value.split(",").mapNotNull { it.trim().toIntOrNull() }.toSet()
+    }
+
+    fun formatReminderDays(days: Set<Int>): String {
+        return days.sorted().joinToString(",")
+    }
+
     fun getTimeUntilWeekReset(): Long {
         val calendar = Calendar.getInstance()
         val currentDayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)

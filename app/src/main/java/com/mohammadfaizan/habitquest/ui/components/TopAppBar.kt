@@ -13,6 +13,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.sp
 import androidx.core.view.HapticFeedbackConstantsCompat
 import com.mohammadfaizan.habitquest.R
 
@@ -23,6 +24,7 @@ fun TopAppBarComponent(
     onMenuClick: () -> Unit = {},
     onStatsClick: () -> Unit = {},
     onAddClick: () -> Unit = {},
+    onCrownClick: () -> Unit = {},
 ) {
     val hapticFeedback = LocalHapticFeedback.current
     val view = LocalView.current
@@ -68,6 +70,18 @@ fun TopAppBarComponent(
             ) {
                 Icon(painter = painterResource(R.drawable.ic_chart), contentDescription = "Stats")
             }*/
+            IconButton(
+                onClick = {
+                    try {
+                        view.performHapticFeedback(HapticFeedbackConstantsCompat.KEYBOARD_PRESS)
+                    } catch (e: Exception) {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    }
+                    onCrownClick()
+                }
+            ) {
+                Text(text = "👑", fontSize = 18.sp)
+            }
             IconButton(
                 onClick = {
                     try {

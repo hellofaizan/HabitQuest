@@ -1,9 +1,13 @@
 package com.mohammadfaizan.habitquest.domain.usecase
 
+import com.mohammadfaizan.habitquest.data.local.DayOfWeekCount
+import com.mohammadfaizan.habitquest.domain.repository.HabitCompletionRepository
 import com.mohammadfaizan.habitquest.domain.repository.HabitManagementRepository
 import com.mohammadfaizan.habitquest.domain.repository.HabitRepository
 import com.mohammadfaizan.habitquest.domain.repository.MonthlyProgress
 import com.mohammadfaizan.habitquest.domain.repository.WeeklyProgress
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
@@ -20,7 +24,8 @@ data class AnalyticsData(
     val averageCompletionRate: Float,
     val topPerformingHabits: List<String>,
     val weeklyProgress: WeeklyProgress? = null,
-    val monthlyProgress: MonthlyProgress? = null
+    val monthlyProgress: MonthlyProgress? = null,
+    val completionsByDayOfWeek: List<DayOfWeekCount> = emptyList()
 )
 
 data class GetAnalyticsResult(
@@ -31,7 +36,8 @@ data class GetAnalyticsResult(
 
 class GetAnalyticsUseCase @Inject constructor(
     private val habitRepository: HabitRepository,
-    private val habitManagementRepository: HabitManagementRepository
+    private val habitManagementRepository: HabitManagementRepository,
+    private val habitCompletionRepository: HabitCompletionRepository
 ) {
 
     suspend operator fun invoke(request: GetAnalyticsRequest): GetAnalyticsResult {
@@ -86,17 +92,28 @@ class GetAnalyticsUseCase @Inject constructor(
             .take(5)
             .map { it.name }
 
-        val averageCompletionRate = if (activeHabits > 0) {
-            // This would need more complex calculation in a real app
-            75.0f // Placeholder
+        val totalCompletions = habitCompletionRepository.getTotalCompletionsCount()
+
+        val activeHabitsList = habitRepository.getActiveHabits().first()
+        val averageCompletionRate = if (activeHabitsList.isNotEmpty()) {
+            coroutineScope {
+                activeHabitsList
+                    .map { habit -> async { habitManagementRepository.getHabitStats(habit.id).completionRate } }
+                    .map { it.await() }
+                    .average()
+                    .toFloat()
+            }
         } else 0.0f
+
+        val completionsByDayOfWeek = habitCompletionRepository.getCompletionCountsByDayOfWeek()
 
         val analytics = AnalyticsData(
             totalHabits = totalHabits,
             activeHabits = activeHabits,
-            totalCompletions = 0, // Would need to calculate from all habits
+            totalCompletions = totalCompletions,
             averageCompletionRate = averageCompletionRate,
-            topPerformingHabits = topPerformingHabits
+            topPerformingHabits = topPerformingHabits,
+            completionsByDayOfWeek = completionsByDayOfWeek
         )
 
         return GetAnalyticsResult(success = true, analytics = analytics)

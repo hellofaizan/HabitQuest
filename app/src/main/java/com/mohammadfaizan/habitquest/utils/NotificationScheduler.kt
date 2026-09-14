@@ -1,19 +1,17 @@
 package com.mohammadfaizan.habitquest.utils
 
 import android.content.Context
+import androidx.work.Data
 import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.mohammadfaizan.habitquest.data.local.Habit
-import com.mohammadfaizan.habitquest.data.local.HabitFrequency
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
 
 object NotificationScheduler {
 
-    private fun parseTime(timeString: String?): Pair<Int, Int>? {
+    internal fun parseTime(timeString: String?): Pair<Int, Int>? {
         if (timeString.isNullOrBlank()) return null
         return try {
             val parts = timeString.split(":")
@@ -29,7 +27,7 @@ object NotificationScheduler {
         }
     }
 
-    private fun calculateInitialDelay(hour: Int, minute: Int): Long {
+    internal fun calculateInitialDelay(hour: Int, minute: Int): Long {
         val calendar = Calendar.getInstance()
         val currentHour = calendar.get(Calendar.HOUR_OF_DAY)
         val currentMinute = calendar.get(Calendar.MINUTE)
@@ -49,82 +47,71 @@ object NotificationScheduler {
         return targetCalendar.timeInMillis - System.currentTimeMillis()
     }
 
+    // Delay until the next occurrence (today or up to 6 days out) of targetDayOfWeek at hour:minute.
+    // targetDayOfWeek uses java.util.Calendar.DAY_OF_WEEK values (1=Sunday..7=Saturday).
+    internal fun calculateInitialDelayForDay(targetDayOfWeek: Int, hour: Int, minute: Int): Long {
+        val now = Calendar.getInstance()
+        val currentDayOfWeek = now.get(Calendar.DAY_OF_WEEK)
+        val daysUntilTarget = (targetDayOfWeek - currentDayOfWeek + 7) % 7
+
+        val candidate = Calendar.getInstance().apply {
+            add(Calendar.DAY_OF_YEAR, daysUntilTarget)
+            set(Calendar.HOUR_OF_DAY, hour)
+            set(Calendar.MINUTE, minute)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+
+        if (candidate.timeInMillis <= now.timeInMillis) {
+            candidate.add(Calendar.DAY_OF_YEAR, 7)
+        }
+
+        return candidate.timeInMillis - now.timeInMillis
+    }
+
+    private fun uniqueWorkName(habitId: Long, dayOfWeek: Int) = "habit_reminder_${habitId}_day_$dayOfWeek"
+
+    // WorkManager has no native "specific days of the week" trigger, so each selected day gets
+    // its own weekly-repeating request, individually named so it can be replaced/cancelled alone.
     fun scheduleHabitReminder(context: Context, habit: Habit) {
+        cancelHabitReminder(context, habit.id)
+
         if (!habit.reminderEnabled || !habit.isActive || habit.reminderTime.isNullOrBlank()) {
             return
         }
 
-        val timePair = parseTime(habit.reminderTime) ?: return
-        val (hour, minute) = timePair
+        val (hour, minute) = parseTime(habit.reminderTime) ?: return
+        val selectedDays = DateUtils.parseReminderDays(habit.reminderDays)
+        if (selectedDays.isEmpty()) return
 
-        val initialDelay = calculateInitialDelay(hour, minute)
+        val workManager = WorkManager.getInstance(context)
 
-        val workRequest = when (habit.frequency) {
-            HabitFrequency.DAILY -> {
-                PeriodicWorkRequestBuilder<HabitReminderWorker>(
-                    1, TimeUnit.DAYS
+        selectedDays.forEach { dayOfWeek ->
+            val initialDelay = calculateInitialDelayForDay(dayOfWeek, hour, minute)
+
+            val workRequest = PeriodicWorkRequestBuilder<HabitReminderWorker>(7, TimeUnit.DAYS)
+                .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
+                .setInputData(
+                    Data.Builder()
+                        .putLong("habit_id", habit.id)
+                        .build()
                 )
-                    .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
-                    .setInputData(
-                        androidx.work.Data.Builder()
-                            .putLong("habit_id", habit.id)
-                            .build()
-                    )
-                    .addTag("habit_reminder_${habit.id}")
-                    .build()
-            }
-            HabitFrequency.WEEKLY -> {
-                PeriodicWorkRequestBuilder<HabitReminderWorker>(
-                    7, TimeUnit.DAYS
-                )
-                    .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
-                    .setInputData(
-                        androidx.work.Data.Builder()
-                            .putLong("habit_id", habit.id)
-                            .build()
-                    )
-                    .addTag("habit_reminder_${habit.id}")
-                    .build()
-            }
-            HabitFrequency.MONTHLY -> {
-                PeriodicWorkRequestBuilder<HabitReminderWorker>(
-                    30, TimeUnit.DAYS
-                )
-                    .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
-                    .setInputData(
-                        androidx.work.Data.Builder()
-                            .putLong("habit_id", habit.id)
-                            .build()
-                    )
-                    .addTag("habit_reminder_${habit.id}")
-                    .build()
-            }
-            HabitFrequency.CUSTOM -> {
-                // For custom frequency, schedule as daily for now
-                // You can enhance this later based on custom frequency logic
-                PeriodicWorkRequestBuilder<HabitReminderWorker>(
-                    1, TimeUnit.DAYS
-                )
-                    .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
-                    .setInputData(
-                        androidx.work.Data.Builder()
-                            .putLong("habit_id", habit.id)
-                            .build()
-                    )
-                    .addTag("habit_reminder_${habit.id}")
-                    .build()
-            }
+                .addTag("habit_reminder_${habit.id}")
+                .build()
+
+            workManager.enqueueUniquePeriodicWork(
+                uniqueWorkName(habit.id, dayOfWeek),
+                ExistingPeriodicWorkPolicy.REPLACE,
+                workRequest
+            )
         }
-
-        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-            "habit_reminder_${habit.id}",
-            ExistingPeriodicWorkPolicy.REPLACE,
-            workRequest
-        )
     }
 
     fun cancelHabitReminder(context: Context, habitId: Long) {
-        WorkManager.getInstance(context).cancelUniqueWork("habit_reminder_$habitId")
+        val workManager = WorkManager.getInstance(context)
+        for (dayOfWeek in Calendar.SUNDAY..Calendar.SATURDAY) {
+            workManager.cancelUniqueWork(uniqueWorkName(habitId, dayOfWeek))
+        }
         // Also cancel any notifications that might be showing
         HabitNotificationManager.cancelNotification(context, habitId.toInt())
     }
@@ -139,4 +126,3 @@ object NotificationScheduler {
         }
     }
 }
-

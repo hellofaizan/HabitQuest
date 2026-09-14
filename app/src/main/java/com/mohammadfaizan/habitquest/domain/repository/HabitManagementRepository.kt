@@ -3,10 +3,17 @@ package com.mohammadfaizan.habitquest.domain.repository
 import com.mohammadfaizan.habitquest.data.local.Habit
 import com.mohammadfaizan.habitquest.data.local.HabitCompletion
 
+enum class CompleteHabitOutcome {
+    FAILED,
+    ALREADY_AT_TARGET,
+    COMPLETED
+}
+
 interface HabitManagementRepository {
 
-    suspend fun completeHabit(habitId: Long, notes: String? = null): Boolean
+    suspend fun completeHabit(habitId: Long, notes: String? = null): CompleteHabitOutcome
     suspend fun uncompleteHabit(habitId: Long, dateKey: String): Boolean
+    suspend fun updateCompletionNote(habitId: Long, dateKey: String, note: String?): Boolean
     suspend fun getHabitWithCompletions(habitId: Long): HabitWithCompletions?
     suspend fun getHabitsWithCompletionStatus(dateKey: String): List<HabitWithCompletionStatus>
     suspend fun calculateAndUpdateStreak(habitId: Long): Int

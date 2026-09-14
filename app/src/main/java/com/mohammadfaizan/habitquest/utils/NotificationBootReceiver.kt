@@ -3,7 +3,6 @@ package com.mohammadfaizan.habitquest.utils
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import androidx.room.Room
 import com.mohammadfaizan.habitquest.data.local.AppDatabase
 import com.mohammadfaizan.habitquest.data.repository.HabitRepositoryImpl
 import kotlinx.coroutines.CoroutineScope
@@ -18,22 +17,17 @@ class NotificationBootReceiver : BroadcastReceiver() {
             HabitNotificationManager.createNotificationChannel(context)
             
             // Reschedule all habit reminders after boot
+            val pendingResult = goAsync()
             CoroutineScope(Dispatchers.IO).launch {
-                val db = Room.databaseBuilder(
-                    context,
-                    AppDatabase::class.java,
-                    "app-db"
-                ).build()
-
-                val habitRepo = HabitRepositoryImpl(db.habitDao())
-                
                 try {
+                    val db = AppDatabase.getInstance(context)
+                    val habitRepo = HabitRepositoryImpl(db.habitDao())
                     val allHabits = habitRepo.getAllHabits().first()
                     NotificationScheduler.rescheduleAllReminders(context, allHabits)
                 } catch (e: Exception) {
                     // Handle error silently
                 } finally {
-                    db.close()
+                    pendingResult.finish()
                 }
             }
         }

@@ -1,6 +1,8 @@
 package com.mohammadfaizan.habitquest.data.repository
 
+import com.mohammadfaizan.habitquest.data.local.AppDatabase
 import com.mohammadfaizan.habitquest.data.local.HabitCompletion
+import com.mohammadfaizan.habitquest.domain.repository.CompleteHabitOutcome
 import com.mohammadfaizan.habitquest.domain.repository.HabitCompletionRepository
 import com.mohammadfaizan.habitquest.domain.repository.HabitManagementRepository
 import com.mohammadfaizan.habitquest.domain.repository.HabitRepository
@@ -10,7 +12,10 @@ import com.mohammadfaizan.habitquest.domain.repository.HabitWithCompletions
 import com.mohammadfaizan.habitquest.domain.repository.MonthlyProgress
 import com.mohammadfaizan.habitquest.domain.repository.WeeklyProgress
 import com.mohammadfaizan.habitquest.utils.DateUtils
+import androidx.room.withTransaction
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -18,46 +23,74 @@ import java.util.Locale
 
 class HabitManagementRepositoryImpl(
     private val habitRepository: HabitRepository,
-    private val habitCompletionRepository: HabitCompletionRepository
+    private val habitCompletionRepository: HabitCompletionRepository,
+    private val database: AppDatabase
 ) : HabitManagementRepository {
 
-    override suspend fun completeHabit(habitId: Long, notes: String?): Boolean {
+    override suspend fun completeHabit(habitId: Long, notes: String?): CompleteHabitOutcome {
         return try {
-            val habit = habitRepository.getHabitById(habitId) ?: return false
-            val dateKey = DateUtils.getCurrentDateKey()
+            // The target-count check and the insert must be one atomic unit — otherwise two
+            // near-simultaneous taps can both read "not yet at target" before either commits,
+            // and both insert, double-counting a single logical tap.
+            // Returns null = habit not found, false = already at target (no-op), true = newly inserted.
+            val didInsert = database.withTransaction {
+                val habit = habitRepository.getHabitById(habitId) ?: return@withTransaction null
 
-            val todayCompletions =
-                habitCompletionRepository.getCompletionsForSpecificDate(habitId, dateKey)
+                val todayCompletions =
+                    habitCompletionRepository.getCompletionsForSpecificDate(habitId, DateUtils.getCurrentDateKey())
 
-            if (todayCompletions >= habit.targetCount) {
-                return true
+                if (todayCompletions >= habit.targetCount) {
+                    return@withTransaction false
+                }
+
+                val completion = HabitCompletion(
+                    habitId = habitId,
+                    notes = notes,
+                    dateKey = DateUtils.getCurrentDateKey()
+                )
+                habitCompletionRepository.insertCompletion(completion)
+                habitRepository.incrementCompletions(habitId)
+                true
+            } ?: return CompleteHabitOutcome.FAILED
+
+            if (didInsert) {
+                calculateAndUpdateStreak(habitId)
+                CompleteHabitOutcome.COMPLETED
+            } else {
+                CompleteHabitOutcome.ALREADY_AT_TARGET
             }
-
-            val completion = HabitCompletion(
-                habitId = habitId,
-                notes = notes,
-                dateKey = dateKey
-            )
-            habitCompletionRepository.insertCompletion(completion)
-
-            habitRepository.incrementCompletions(habitId)
-
-            calculateAndUpdateStreak(habitId)
-
-            true
         } catch (e: Exception) {
-            false
+            CompleteHabitOutcome.FAILED
         }
     }
 
     override suspend fun uncompleteHabit(habitId: Long, dateKey: String): Boolean {
         return try {
-            val completion = habitCompletionRepository.getCompletionForDate(habitId, dateKey)
-            completion?.let {
-                habitCompletionRepository.deleteCompletion(it)
+            val didDelete = database.withTransaction {
+                val completion = habitCompletionRepository.getCompletionForDate(habitId, dateKey)
+                if (completion != null) {
+                    habitCompletionRepository.deleteCompletion(completion)
+                    true
+                } else {
+                    false
+                }
+            }
+            if (didDelete) {
                 calculateAndUpdateStreak(habitId)
             }
-            completion != null
+            didDelete
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    override suspend fun updateCompletionNote(habitId: Long, dateKey: String, note: String?): Boolean {
+        return try {
+            // Same "most recent" convention as undo — for a multi-times-a-day habit, the note
+            // attaches to the latest completion, not an arbitrary one.
+            val completion = habitCompletionRepository.getCompletionForDate(habitId, dateKey) ?: return false
+            habitCompletionRepository.updateCompletion(completion.copy(notes = note))
+            true
         } catch (e: Exception) {
             false
         }
@@ -86,11 +119,14 @@ class HabitManagementRepositoryImpl(
         if (habit != null) {
             // Update current streak and longest streak if current is higher
             val longestStreak = if (currentStreak > habit.longestStreak) currentStreak else habit.longestStreak
-            val updatedHabit = habit.copy(
-                currentStreak = currentStreak,
-                longestStreak = longestStreak
-            )
-            habitRepository.updateHabit(updatedHabit)
+            // Skip the write when nothing changed — an unconditional write here re-triggers the habits Flow on every launch.
+            if (currentStreak != habit.currentStreak || longestStreak != habit.longestStreak) {
+                val updatedHabit = habit.copy(
+                    currentStreak = currentStreak,
+                    longestStreak = longestStreak
+                )
+                habitRepository.updateHabit(updatedHabit)
+            }
         } else {
             habitRepository.updateStreak(habitId, currentStreak)
         }
@@ -107,7 +143,11 @@ class HabitManagementRepositoryImpl(
         val thirtyDaysAgo = DateUtils.getDateKeyForDaysAgo(30)
         val recentCompletions =
             habitCompletionRepository.getCompletionsSinceDate(habitId, thirtyDaysAgo)
-        val completionRate = if (recentCompletions > 0) (recentCompletions / 30.0f) * 100 else 0f
+        // Normalize by target*days, not just days, or a targetCount>1 habit can read past 100%.
+        val expectedCompletions = 30 * habit.targetCount
+        val completionRate = if (expectedCompletions > 0) {
+            ((recentCompletions.toFloat() / expectedCompletions) * 100).coerceIn(0f, 100f)
+        } else 0f
 
         val averageCompletionsPerDay = if (totalCompletions > 0) {
             val daysSinceCreation = getDaysSinceCreation(habit.createdAt)
@@ -124,16 +164,17 @@ class HabitManagementRepositoryImpl(
     }
 
     override suspend fun completeHabitsForDate(habitIds: List<Long>, dateKey: String): Int {
+        // Delegates to completeHabit() per habit (today-only, same as its single-habit
+        // counterpart) so it gets the same race-safe transaction, target-count awareness
+        // (fills a multi-times-a-day habit all the way to target, not just one tick), and
+        // streak recalculation — instead of duplicating that logic with a naive count check.
         var completedCount = 0
         for (habitId in habitIds) {
-            val isCompleted = habitCompletionRepository.isHabitCompletedForDate(habitId, dateKey)
-            if (isCompleted == 0) {
-                val completion = HabitCompletion(
-                    habitId = habitId,
-                    dateKey = dateKey
-                )
-                habitCompletionRepository.insertCompletion(completion)
-                habitRepository.incrementCompletions(habitId)
+            var completedThisHabit = false
+            while (completeHabit(habitId, null) == CompleteHabitOutcome.COMPLETED) {
+                completedThisHabit = true
+            }
+            if (completedThisHabit) {
                 completedCount++
             }
         }
@@ -232,8 +273,10 @@ class HabitManagementRepositoryImpl(
     
     override suspend fun recalculateAllStreaks() {
         val habits = habitRepository.getActiveHabits().first()
-        habits.forEach { habit ->
-            calculateAndUpdateStreak(habit.id)
+        coroutineScope {
+            habits.forEach { habit ->
+                launch { calculateAndUpdateStreak(habit.id) }
+            }
         }
     }
     

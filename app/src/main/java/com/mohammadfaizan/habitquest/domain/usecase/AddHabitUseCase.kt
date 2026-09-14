@@ -14,7 +14,8 @@ data class AddHabitRequest(
     val frequency: String = "DAILY",
     val category: String? = null,
     val reminderTime: String? = null,
-    val reminderEnabled: Boolean = false
+    val reminderEnabled: Boolean = false,
+    val reminderDays: String = "1,2,3,4,5,6,7"
 )
 
 data class AddHabitResult(
@@ -49,7 +50,8 @@ class AddHabitUseCase @Inject constructor(
                 frequency = HabitFrequency.valueOf(request.frequency.uppercase()),
                 category = request.category?.trim(),
                 reminderTime = request.reminderTime,
-                reminderEnabled = request.reminderEnabled
+                reminderEnabled = request.reminderEnabled,
+                reminderDays = request.reminderDays
             )
 
             val habitId = habitRepository.insertHabit(habit)

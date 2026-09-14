@@ -31,16 +31,16 @@ fun ContributionGraph(
 ) {
     val habitColor = Color(habit.color.toColorInt())
     val graphDays = 182
-    // Create 182 days of data (around 6 months)
+    // 182 days (~6 months); reuses one Calendar/formatter instead of allocating 182 of each.
     val days = remember(habit.id, completions) {
         val completionMap = completions.groupBy { it.dateKey }
-        Calendar.getInstance()
+        val calendar = Calendar.getInstance()
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
         List(graphDays) { dayOffset ->
-            val date = Calendar.getInstance().apply {
-                add(Calendar.DAY_OF_YEAR, -dayOffset)
-            }
-            val dateKey = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(date.time)
+            calendar.timeInMillis = System.currentTimeMillis()
+            calendar.add(Calendar.DAY_OF_YEAR, -dayOffset)
+            val dateKey = dateFormat.format(calendar.time)
             val dayCompletions = completionMap[dateKey] ?: emptyList()
             DayData(
                 dateKey = dateKey,

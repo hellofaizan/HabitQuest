@@ -1,6 +1,7 @@
 package com.mohammadfaizan.habitquest.data.repository
 
 import com.mohammadfaizan.habitquest.data.local.CompletionPattern
+import com.mohammadfaizan.habitquest.data.local.DayOfWeekCount
 import com.mohammadfaizan.habitquest.data.local.HabitCompletion
 import com.mohammadfaizan.habitquest.data.local.HabitCompletionDao
 import com.mohammadfaizan.habitquest.domain.repository.HabitCompletionRepository
@@ -173,5 +174,14 @@ class HabitCompletionRepositoryImpl(
         if (completions.isNotEmpty()) {
             habitCompletionDao.insertCompletions(completions)
         }
+    }
+
+    // Analytics
+    override suspend fun getTotalCompletionsCount(): Int {
+        return habitCompletionDao.getTotalCompletionsCount()
+    }
+
+    override suspend fun getCompletionCountsByDayOfWeek(): List<DayOfWeekCount> {
+        return habitCompletionDao.getCompletionCountsByDayOfWeek()
     }
 }
