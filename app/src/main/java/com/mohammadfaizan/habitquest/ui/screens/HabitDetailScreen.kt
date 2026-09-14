@@ -44,6 +44,7 @@ import com.mohammadfaizan.habitquest.data.local.HabitCompletion
 import com.mohammadfaizan.habitquest.domain.repository.HabitStats
 import com.mohammadfaizan.habitquest.ui.components.ContributionGraph
 import com.mohammadfaizan.habitquest.ui.components.FrozenDayColor
+import com.mohammadfaizan.habitquest.ui.components.HabitChainVisualization
 import com.mohammadfaizan.habitquest.ui.components.ShareableProgressCard
 import com.mohammadfaizan.habitquest.utils.Achievements
 import com.mohammadfaizan.habitquest.utils.shareBitmap
@@ -146,6 +147,24 @@ fun HabitDetailScreen(
                 modifier = Modifier.weight(1f)
             )
         }
+
+        Spacer(modifier = Modifier.height(28.dp))
+
+        Text(
+            text = "Habit Chain",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        HabitChainVisualization(
+            habit = habit,
+            completions = completions,
+            freezeDates = freezeDates,
+            modifier = Modifier.fillMaxWidth()
+        )
 
         Spacer(modifier = Modifier.height(28.dp))
 
