@@ -41,6 +41,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.mohammadfaizan.habitquest.domain.usecase.ExportBackupResult
+import com.mohammadfaizan.habitquest.domain.usecase.ExportCsvResult
 import com.mohammadfaizan.habitquest.ui.viewmodel.BackupViewModel
 import com.mohammadfaizan.habitquest.utils.DateUtils
 import kotlinx.coroutines.CoroutineScope
@@ -68,6 +69,13 @@ fun BackupRestoreScreen(
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         viewModel.exportBackup { result -> writeExportResult(context, uri, result, scope) }
+    }
+
+    val csvExportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        viewModel.exportCsv { result -> writeCsvResult(context, uri, result, scope) }
     }
 
     // "*/*" rather than "application/json" — plenty of file managers hand back backup files
@@ -121,6 +129,17 @@ fun BackupRestoreScreen(
             buttonLabel = "Restore",
             enabled = !isWorking,
             onClick = { importLauncher.launch(arrayOf("*/*")) }
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        BackupActionCard(
+            emoji = "📊",
+            title = "Export to CSV",
+            description = "Save every completion — habit, date, time, notes — as a spreadsheet-friendly CSV file for Excel or Sheets. Not used for restoring.",
+            buttonLabel = "Export CSV",
+            enabled = !isWorking,
+            onClick = { csvExportLauncher.launch("habitquest-completions-${DateUtils.getCurrentDateKey()}.csv") }
         )
 
         if (isWorking) {
@@ -245,23 +264,60 @@ private fun writeExportResult(
     result: ExportBackupResult,
     scope: CoroutineScope
 ) {
-    if (!result.success || result.json == null) {
-        Toast.makeText(context, result.error ?: "Failed to create backup", Toast.LENGTH_SHORT).show()
+    writeTextFile(
+        context = context,
+        uri = uri,
+        content = result.json,
+        loadError = result.error,
+        successMessage = "Backup saved",
+        failurePrefix = "Failed to save backup",
+        scope = scope
+    )
+}
+
+private fun writeCsvResult(
+    context: Context,
+    uri: Uri,
+    result: ExportCsvResult,
+    scope: CoroutineScope
+) {
+    writeTextFile(
+        context = context,
+        uri = uri,
+        content = result.csv,
+        loadError = result.error,
+        successMessage = "CSV saved",
+        failurePrefix = "Failed to save CSV",
+        scope = scope
+    )
+}
+
+private fun writeTextFile(
+    context: Context,
+    uri: Uri,
+    content: String?,
+    loadError: String?,
+    successMessage: String,
+    failurePrefix: String,
+    scope: CoroutineScope
+) {
+    if (content == null) {
+        Toast.makeText(context, loadError ?: failurePrefix, Toast.LENGTH_SHORT).show()
         return
     }
     scope.launch(Dispatchers.IO) {
         val error = try {
             context.contentResolver.openOutputStream(uri)?.use { out ->
-                out.write(result.json.toByteArray())
+                out.write(content.toByteArray())
             } ?: throw IOException("Couldn't open the selected file")
             null
         } catch (e: IOException) {
-            e.message ?: "Failed to save backup"
+            e.message ?: failurePrefix
         }
         withContext(Dispatchers.Main) {
             Toast.makeText(
                 context,
-                error?.let { "Failed to save backup: $it" } ?: "Backup saved",
+                error?.let { "$failurePrefix: $it" } ?: successMessage,
                 Toast.LENGTH_SHORT
             ).show()
         }

@@ -9,4 +9,5 @@ data class BackupSummary(
 interface BackupRepository {
     suspend fun exportBackup(): String
     suspend fun importBackup(json: String): BackupSummary
+    suspend fun exportCsv(): String
 }

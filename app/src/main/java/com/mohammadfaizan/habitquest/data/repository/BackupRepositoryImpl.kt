@@ -15,7 +15,9 @@ import com.mohammadfaizan.habitquest.domain.repository.BackupRepository
 import com.mohammadfaizan.habitquest.domain.repository.BackupSummary
 import org.json.JSONArray
 import org.json.JSONObject
+import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Locale
 
 private const val BACKUP_FORMAT_VERSION = 1
 
@@ -81,6 +83,44 @@ class BackupRepositoryImpl(
             completionCount = completions.size,
             freezeCount = freezes.size
         )
+    }
+
+    // A flat, spreadsheet-friendly log — unlike exportBackup(), this isn't meant to be
+    // restorable, just readable in Excel/Sheets: one row per completion instead of the
+    // JSON backup's relational habit/completion/freeze structure.
+    override suspend fun exportCsv(): String {
+        val habitsById = habitDao.getAllHabitsSnapshot().associateBy { it.id }
+        val completions = habitCompletionDao.getAllCompletionsSnapshot()
+            .sortedWith(
+                compareByDescending<HabitCompletion> { it.dateKey }
+                    .thenBy { habitsById[it.habitId]?.name ?: "" }
+            )
+        val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+
+        val builder = StringBuilder()
+        builder.append("Habit,Category,Date,Time,Notes,Has Photo\n")
+        for (completion in completions) {
+            val habit = habitsById[completion.habitId]
+            val row = listOf(
+                habit?.name ?: "Unknown",
+                habit?.category ?: "",
+                completion.dateKey,
+                timeFormat.format(completion.completedAt),
+                completion.notes ?: "",
+                if (completion.photoPath != null) "Yes" else "No"
+            )
+            builder.append(row.joinToString(",") { csvEscape(it) })
+            builder.append("\n")
+        }
+        return builder.toString()
+    }
+}
+
+private fun csvEscape(value: String): String {
+    return if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+        "\"" + value.replace("\"", "\"\"") + "\""
+    } else {
+        value
     }
 }
 

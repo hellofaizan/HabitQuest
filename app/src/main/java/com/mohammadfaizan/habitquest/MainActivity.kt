@@ -47,6 +47,7 @@ import com.mohammadfaizan.habitquest.domain.usecase.ArchiveHabitUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.CompleteHabitUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.DeleteHabitUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.ExportBackupUseCase
+import com.mohammadfaizan.habitquest.domain.usecase.ExportCsvUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.FreezeStreakUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.GenerateRandomDataUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.GetAnalyticsUseCase
@@ -166,7 +167,8 @@ class MainActivity : ComponentActivity() {
                     val backupViewModel = remember {
                         BackupViewModel(
                             ExportBackupUseCase(backupRepo),
-                            ImportBackupUseCase(backupRepo, habitManagementRepo)
+                            ImportBackupUseCase(backupRepo, habitManagementRepo),
+                            ExportCsvUseCase(backupRepo)
                         )
                     }
 

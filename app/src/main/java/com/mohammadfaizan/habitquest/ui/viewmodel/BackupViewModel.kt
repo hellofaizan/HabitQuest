@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mohammadfaizan.habitquest.domain.usecase.ExportBackupResult
 import com.mohammadfaizan.habitquest.domain.usecase.ExportBackupUseCase
+import com.mohammadfaizan.habitquest.domain.usecase.ExportCsvResult
+import com.mohammadfaizan.habitquest.domain.usecase.ExportCsvUseCase
 import com.mohammadfaizan.habitquest.domain.usecase.ImportBackupResult
 import com.mohammadfaizan.habitquest.domain.usecase.ImportBackupUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,7 +15,8 @@ import kotlinx.coroutines.launch
 
 class BackupViewModel(
     private val exportBackupUseCase: ExportBackupUseCase,
-    private val importBackupUseCase: ImportBackupUseCase
+    private val importBackupUseCase: ImportBackupUseCase,
+    private val exportCsvUseCase: ExportCsvUseCase
 ) : ViewModel() {
 
     private val _isWorking = MutableStateFlow(false)
@@ -32,6 +35,15 @@ class BackupViewModel(
         viewModelScope.launch {
             _isWorking.value = true
             val result = importBackupUseCase(json)
+            _isWorking.value = false
+            onResult(result)
+        }
+    }
+
+    fun exportCsv(onResult: (ExportCsvResult) -> Unit) {
+        viewModelScope.launch {
+            _isWorking.value = true
+            val result = exportCsvUseCase()
             _isWorking.value = false
             onResult(result)
         }
