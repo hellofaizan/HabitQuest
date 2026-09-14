@@ -19,7 +19,6 @@ import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
-import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.currentState
@@ -29,8 +28,8 @@ import androidx.glance.layout.Column
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
+import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
-import androidx.glance.layout.size
 import androidx.glance.layout.width
 import androidx.glance.state.GlanceStateDefinition
 import androidx.glance.state.PreferencesGlanceStateDefinition
@@ -79,7 +78,7 @@ private fun HabitWidgetWeeklyContent(data: HabitWidgetData?) {
 
     WidgetCard(habitColor = habitColor) {
         Row(
-            modifier = GlanceModifier.fillMaxSize(),
+            modifier = GlanceModifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = GlanceModifier.defaultWeight()) {
@@ -92,17 +91,14 @@ private fun HabitWidgetWeeklyContent(data: HabitWidgetData?) {
 
                 Spacer(modifier = GlanceModifier.height(8.dp))
 
-                Row {
-                    data.days.forEachIndexed { index, day ->
-                        Box(
-                            modifier = GlanceModifier
-                                .size(18.dp)
-                                .background(dayCellColor(day, data.targetCount, habitColor))
-                                .cornerRadius(4.dp)
-                        ) {}
-                        if (index != data.days.lastIndex) {
-                            Spacer(modifier = GlanceModifier.width(4.dp))
-                        }
+                Row(modifier = GlanceModifier.fillMaxWidth()) {
+                    data.days.forEach { day ->
+                        WidgetDayCell(
+                            day = day,
+                            targetCount = data.targetCount,
+                            habitColor = habitColor,
+                            cellHeight = 20.dp
+                        )
                     }
                 }
             }

@@ -20,7 +20,6 @@ import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
-import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.currentState
@@ -32,17 +31,21 @@ import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
-import androidx.glance.layout.padding
 import androidx.glance.state.GlanceStateDefinition
 import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 
-// 7 rows (weekdays) x 26 columns (weeks) — the exact same grid ContributionGraph and
-// ShareableProgressCard use in-app, so the widget reads as the same graph.
+// Same 7-rows-per-column (weekday x week) layout ContributionGraph uses in-app, but with far
+// fewer weeks — a 182-day (26-column) grid rendered as a garbled, truncated ~4x10 grid on a
+// real device, almost certainly a RemoteViews view-count limit (182 cells, each with its own
+// background/corner-radius view, plus an earlier 28-cell version that was already only
+// partially rendering). 5 weeks keeps the "graph" feel at a size intended to render reliably;
+// if it still truncates on-device this needs to drop further, or move to per-week summary
+// cells instead of one cell per day.
 private const val GRAPH_ROWS = 7
-private const val GRAPH_COLUMNS = 26
+private const val GRAPH_COLUMNS = 5
 private const val GRAPH_WIDGET_DAYS = GRAPH_ROWS * GRAPH_COLUMNS
 
 class HabitWidgetMonth : GlanceAppWidget() {
@@ -80,7 +83,7 @@ private fun HabitWidgetGraphContent(data: HabitWidgetData?) {
     val habitColor = Color(data.colorHex.toColorInt())
 
     WidgetCard(habitColor = habitColor) {
-        Column(modifier = GlanceModifier.fillMaxSize()) {
+        Column(modifier = GlanceModifier.fillMaxWidth()) {
             Row(
                 modifier = GlanceModifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -111,22 +114,12 @@ private fun HabitWidgetGraphContent(data: HabitWidgetData?) {
                 Row(modifier = GlanceModifier.fillMaxWidth()) {
                     for (col in 0 until GRAPH_COLUMNS) {
                         val dayIndex = row + col * GRAPH_ROWS
-                        val day = data.days.getOrNull(dayIndex)
-                        Box(
-                            modifier = GlanceModifier
-                                .defaultWeight()
-                                .height(8.dp)
-                                .padding(horizontal = 0.5.dp)
-                        ) {
-                            Box(
-                                modifier = GlanceModifier
-                                    .fillMaxSize()
-                                    .background(
-                                        if (day != null) dayCellColor(day, data.targetCount, habitColor) else WidgetMutedCell.copy(alpha = 0.2f)
-                                    )
-                                    .cornerRadius(1.dp)
-                            ) {}
-                        }
+                        WidgetDayCell(
+                            day = data.days.getOrNull(dayIndex),
+                            targetCount = data.targetCount,
+                            habitColor = habitColor,
+                            cellHeight = 16.dp
+                        )
                     }
                 }
                 if (row != GRAPH_ROWS - 1) {
