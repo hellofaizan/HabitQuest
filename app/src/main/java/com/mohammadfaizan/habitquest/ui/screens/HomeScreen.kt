@@ -1,13 +1,10 @@
 package com.mohammadfaizan.habitquest.ui.screens
 
 import android.widget.Toast
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,10 +13,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -27,9 +29,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.mohammadfaizan.habitquest.data.local.Habit
 import com.mohammadfaizan.habitquest.data.local.HabitCompletion
@@ -58,6 +58,13 @@ fun HomeScreen(
     val selectedCategory by habitViewModel.selectedCategory.collectAsState()
     val actions by habitViewModel.actions.collectAsState()
     val context = LocalContext.current
+
+    val todayKey = DateUtils.getCurrentDateKey()
+    val anyIncompleteToday = uiState.habits.any { habit ->
+        val completedToday = uiState.habitCompletions[habit.id]
+            ?.count { it.dateKey == todayKey } ?: 0
+        completedToday < habit.targetCount
+    }
 
     LaunchedEffect(actions) {
         actions?.let { action ->
@@ -97,101 +104,86 @@ fun HomeScreen(
         }
     }
 
-    Column(
-        modifier = modifier.fillMaxSize()
-    ) {
-        when {
-            uiState.habits.isNotEmpty() -> {
-                WeeklyCalendarWithData(
-                    activeHabits = uiState.habits,
-                    habitCompletions = uiState.weeklyCompletions,
-                    onWeekChange = { weekOffset ->
-                        // Load data for the selected week
-                        habitViewModel.loadWeeklyCompletions(weekOffset)
-                    },
-                    modifier = Modifier.fillMaxWidth()
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background,
+        floatingActionButton = {
+            if (uiState.habits.isNotEmpty() && anyIncompleteToday) {
+                ExtendedFloatingActionButton(
+                    onClick = { habitViewModel.completeAllForToday() },
+                    icon = { Icon(imageVector = Icons.Default.Check, contentDescription = null) },
+                    text = { Text("Complete All") }
                 )
+            }
+        }
+    ) { fabPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(fabPadding)
+        ) {
+            when {
+                uiState.habits.isNotEmpty() -> {
+                    WeeklyCalendarWithData(
+                        activeHabits = uiState.habits,
+                        habitCompletions = uiState.weeklyCompletions,
+                        onWeekChange = { weekOffset ->
+                            // Load data for the selected week
+                            habitViewModel.loadWeeklyCompletions(weekOffset)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-                HabitSearchAndFilter(
-                    showSearchBar = showSearchBar,
-                    query = searchQuery,
-                    onQueryChange = habitViewModel::updateSearchQuery,
-                    categories = uiState.habits.mapNotNull { it.category }.distinct().sorted(),
-                    selectedCategory = selectedCategory,
-                    onCategorySelected = habitViewModel::updateCategoryFilter,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                    HabitSearchAndFilter(
+                        showSearchBar = showSearchBar,
+                        query = searchQuery,
+                        onQueryChange = habitViewModel::updateSearchQuery,
+                        categories = uiState.habits.mapNotNull { it.category }.distinct().sorted(),
+                        selectedCategory = selectedCategory,
+                        onCategorySelected = habitViewModel::updateCategoryFilter,
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-                val todayKey = DateUtils.getCurrentDateKey()
-                val anyIncompleteToday = uiState.habits.any { habit ->
-                    val completedToday = uiState.habitCompletions[habit.id]
-                        ?.count { it.dateKey == todayKey } ?: 0
-                    completedToday < habit.targetCount
-                }
-
-                if (anyIncompleteToday) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(50))
-                                .background(MaterialTheme.colorScheme.primaryContainer)
-                                .clickable { habitViewModel.completeAllForToday() }
-                                .padding(horizontal = 14.dp, vertical = 8.dp)
-                        ) {
+                    if (visibleHabits.isEmpty()) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Text(
-                                text = "✓ Complete All",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                                text = "No habits match your search",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+                    } else {
+                        HabitListContent(
+                            habits = visibleHabits,
+                            habitCompletions = uiState.habitCompletions,
+                            habitFreezeDates = uiState.habitFreezeDates,
+                            onHabitClick = onHabitClick,
+                            onHabitLongClick = onHabitLongClick,
+                            onCompleteClick = { habit ->
+                                habitViewModel.completeHabit(habit.id)
+                            },
+                            onUndoClick = { habit ->
+                                habitViewModel.uncompleteHabit(habit.id)
+                            },
+                            onNoteSave = { habit, note ->
+                                habitViewModel.updateTodayNote(habit.id, note)
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
                     }
                 }
 
-                if (visibleHabits.isEmpty()) {
+                !uiState.dataLoaded -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "No habits match your search",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        CircularProgressIndicator()
                     }
-                } else {
-                    HabitListContent(
-                        habits = visibleHabits,
-                        habitCompletions = uiState.habitCompletions,
-                        habitFreezeDates = uiState.habitFreezeDates,
-                        onHabitClick = onHabitClick,
-                        onHabitLongClick = onHabitLongClick,
-                        onCompleteClick = { habit ->
-                            habitViewModel.completeHabit(habit.id)
-                        },
-                        onUndoClick = { habit ->
-                            habitViewModel.uncompleteHabit(habit.id)
-                        },
-                        onNoteSave = { habit, note ->
-                            habitViewModel.updateTodayNote(habit.id, note)
-                        },
+                }
+
+                else -> {
+                    EmptyHabitState(
+                        onAddHabit = onAddHabitClick,
                         modifier = Modifier.fillMaxSize()
                     )
                 }
-            }
-
-            !uiState.dataLoaded -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            }
-
-            else -> {
-                EmptyHabitState(
-                    onAddHabit = onAddHabitClick,
-                    modifier = Modifier.fillMaxSize()
-                )
             }
         }
     }
