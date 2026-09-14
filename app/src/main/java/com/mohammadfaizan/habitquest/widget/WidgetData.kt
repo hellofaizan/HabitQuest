@@ -7,9 +7,8 @@ import kotlinx.coroutines.flow.first
 
 data class WidgetDayState(
     val dateKey: String,
-    // Mirrors HabitCompletionRepositoryImpl.getCurrentStreak: a completion or a freeze both
-    // count as "covered" for streak-continuity purposes, regardless of target count.
-    val isCovered: Boolean
+    val completionCount: Int,
+    val isFrozen: Boolean
 )
 
 data class HabitWidgetData(
@@ -17,7 +16,10 @@ data class HabitWidgetData(
     val name: String,
     val icon: String?,
     val colorHex: String,
+    val targetCount: Int,
     val currentStreak: Int,
+    val longestStreak: Int,
+    val totalCompletion: Int,
     val isFullyCompletedToday: Boolean,
     // Oldest to newest, most recent entry is today.
     val days: List<WidgetDayState>
@@ -41,7 +43,8 @@ suspend fun loadHabitWidgetData(context: Context, habitId: Long, days: Int): Hab
         val dateKey = DateUtils.getDateKeyForDaysAgo(daysAgo)
         WidgetDayState(
             dateKey = dateKey,
-            isCovered = (completionCountByDate[dateKey] ?: 0) > 0 || dateKey in freezeDates
+            completionCount = completionCountByDate[dateKey] ?: 0,
+            isFrozen = dateKey in freezeDates
         )
     }
 
@@ -50,7 +53,10 @@ suspend fun loadHabitWidgetData(context: Context, habitId: Long, days: Int): Hab
         name = habit.name,
         icon = habit.icon,
         colorHex = habit.color,
+        targetCount = habit.targetCount,
         currentStreak = habit.currentStreak,
+        longestStreak = habit.longestStreak,
+        totalCompletion = habit.totalCompletion,
         isFullyCompletedToday = (completionCountByDate[todayKey] ?: 0) >= habit.targetCount,
         days = dayStates
     )
