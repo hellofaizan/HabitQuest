@@ -29,7 +29,7 @@ A beautiful and intuitive habit tracking app built with Jetpack Compose. Track y
 - [x] Display streaks prominently on habit cards (current streak and longest streak badges)
 - [x] Analytics dashboard screen with charts (completion rates, best days)
 - [x] Habit detail screen showing full statistics and completion history
-- [ ] Yearly/monthly overview screens with calendar heatmap
+- [x] Yearly/monthly overview screens with calendar heatmap
 - [x] Habit chains visualization (visual chain showing consecutive days)
 - [ ] Weekly/monthly reports with insights (best performing habits, areas to improve)
 - [x] Habit streaks tracking (backend implemented)
@@ -96,9 +96,8 @@ A beautiful and intuitive habit tracking app built with Jetpack Compose. Track y
 ## 🎯 Roadmap
 
 See the [Features](#-features) section above for a complete list of planned features. Priority items include:
-1. Yearly/monthly overview screens with calendar heatmap
-2. Weekly/monthly reports with insights
-3. Dark mode scheduling (auto-switch based on time of day)
+1. Weekly/monthly reports with insights
+2. Dark mode scheduling (auto-switch based on time of day)
 
 ## 🤝 Contributing
 
